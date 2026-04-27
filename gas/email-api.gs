@@ -28,7 +28,11 @@ function doPost(e) {
   }
 }
 
-function doGet() {
+function doGet(e) {
+  const params = e?.parameter || {};
+  if ((params.type || '').trim() === 'chat') {
+    return handleChat(params);
+  }
   return json({ status: 'ok', service: SITE_NAME + ' API' });
 }
 

@@ -402,16 +402,14 @@ async function handleRun() {
 
   out.textContent = '⏳ Đang kết nối tư vấn viên AI...';
   try {
-    const resp = await fetch(EMAIL_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'chat',
-        systemPrompt,
-        userPrompt,
-        listings: listingsCtx,
-      }),
+    // GAS POST gặp CORS redirect → dùng GET với URLSearchParams
+    const params = new URLSearchParams({
+      type: 'chat',
+      systemPrompt,
+      userPrompt,
+      listings: listingsCtx,
     });
+    const resp = await fetch(EMAIL_API_URL + '?' + params.toString());
     const data = await resp.json();
     if (data.ok && data.text) {
       out.textContent = data.text;
