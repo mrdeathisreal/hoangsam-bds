@@ -329,21 +329,14 @@ function openAgentModal(agentId) {
   // Banner thiếu key: chỉ ADMIN thấy (khách/CTV không cần biết)
   $('ai-no-key').hidden = hasApiKey() || !isAdm;
 
-  // Guest chat: hiện inquiry form, ẩn AI chat panel
-  const guestMode = agentId === 'chat' && !hasApiKey() && !isAdm;
-  $('ai-chat-section').hidden        = guestMode;
-  $('ai-chat-output-section').hidden = guestMode;
-  $('ai-inquiry-section').hidden     = !guestMode;
-  if (guestMode) {
-    // Reset inquiry form
-    ['inq-name','inq-phone','inq-message'].forEach(id => { const el = $(id); if (el) el.value = ''; });
-    const s = $('inq-status'); if (s) { s.textContent = ''; s.className = 'apt-status'; }
-    const btn = $('inq-submit'); if (btn) { btn.disabled = false; btn.textContent = 'Gửi yêu cầu tư vấn'; }
-  }
+  // Luôn hiện AI chat (GAS proxy cho guest, local key cho admin)
+  $('ai-chat-section').hidden        = false;
+  $('ai-chat-output-section').hidden = false;
+  $('ai-inquiry-section').hidden     = true;
 
   $('ai-modal').setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
-  requestAnimationFrame(() => guestMode ? $('inq-name')?.focus() : $('ai-input').focus());
+  requestAnimationFrame(() => $('ai-input').focus());
 }
 
 function closeAgentModal() {
@@ -369,18 +362,6 @@ async function handleRun() {
     return;
   }
 
-  if (!hasApiKey()) {
-    if (isAdmin()) openKeyDialog();
-    else $('ai-output').textContent = 'Hệ thống tạm thời chưa sẵn sàng. Vui lòng thử lại sau hoặc đặt lịch để được tư vấn trực tiếp.';
-    return;
-  }
-
-  const out = $('ai-output');
-  out.textContent = '';
-  out.classList.remove('ai-output--empty');
-  setRunningState(true);
-  currentAbort = new AbortController();
-
   // Chọn system prompt theo role (với agent chat)
   let systemPrompt = currentAgent.id === 'chat'
     ? getSystemPromptForRole('chat', getRole())
@@ -389,35 +370,57 @@ async function handleRun() {
   // BẮT BUỘC trả lời bằng ngôn ngữ UI khách đã chọn
   const uiLang = getLang();
   const LANG_NAMES = { vi: 'Vietnamese', en: 'English', zh: 'Traditional Chinese (繁體中文)' };
-  const langInstruction = `\n\n=== OUTPUT LANGUAGE (STRICT) ===\nThe user interface is currently set to: ${LANG_NAMES[uiLang] || 'Vietnamese'}.\nYou MUST respond in ${LANG_NAMES[uiLang] || 'Vietnamese'} regardless of the language the user types their question in.\nIf user mixes languages, still reply in ${LANG_NAMES[uiLang] || 'Vietnamese'}.`;
-  systemPrompt += langInstruction;
+  systemPrompt += `\n\n=== OUTPUT LANGUAGE (STRICT) ===\nRespond in ${LANG_NAMES[uiLang] || 'Vietnamese'} regardless of the user's input language.`;
 
-  // Agent chat: inject listings Firestore
-  if (currentAgent.id === 'chat') {
-    systemPrompt += '\n\n=== TIN ĐĂNG HIỆN CÓ (dữ liệu thật từ database) ===\n' + formatListingsForContext();
+  // Agent chat: inject listings
+  const listingsCtx = currentAgent.id === 'chat' ? formatListingsForContext() : '';
+  if (listingsCtx) systemPrompt += '\n\n=== TIN ĐĂNG HIỆN CÓ ===\n' + listingsCtx;
+
+  const out = $('ai-output');
+  out.textContent = '';
+  out.classList.remove('ai-output--empty');
+  setRunningState(true);
+
+  // --- Nếu có local Gemini key → stream trực tiếp (admin/CTV) ---
+  if (hasApiKey()) {
+    currentAbort = new AbortController();
+    try {
+      await streamPrompt({
+        systemPrompt, userPrompt,
+        signal: currentAbort.signal,
+        onChunk: (delta) => { out.textContent += delta; out.scrollTop = out.scrollHeight; },
+      });
+    } catch (err) {
+      if (err.name === 'AbortError') out.textContent += '\n\n[Đã dừng]';
+      else out.textContent = isAdmin() ? describeError(err, uiLang) : 'Lỗi kết nối. Vui lòng thử lại.';
+    } finally { currentAbort = null; setRunningState(false); }
+    return;
   }
 
+  // --- Không có key → gọi GAS proxy (tất cả khách) ---
+  if (isAdmin()) { openKeyDialog(); setRunningState(false); return; }
+
+  out.textContent = '⏳ Đang kết nối tư vấn viên AI...';
   try {
-    await streamPrompt({
-      systemPrompt,
-      userPrompt,
-      signal: currentAbort.signal,
-      onChunk: (delta) => {
-        out.textContent += delta;
-        out.scrollTop = out.scrollHeight;
-      },
+    const resp = await fetch(EMAIL_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'chat',
+        systemPrompt,
+        userPrompt,
+        listings: listingsCtx,
+      }),
     });
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      out.textContent += '\n\n[Đã dừng]';
+    const data = await resp.json();
+    if (data.ok && data.text) {
+      out.textContent = data.text;
     } else {
-      const lang = document.documentElement.lang || 'vi';
-      out.textContent = isAdmin()
-        ? describeError(err, lang)
-        : 'Hệ thống tạm thời chưa phản hồi được. Vui lòng thử lại hoặc đặt lịch để gặp trực tiếp chuyên viên.';
+      out.textContent = 'Tư vấn viên tạm thời bận. Vui lòng đặt lịch để được hỗ trợ trực tiếp.';
     }
+  } catch (err) {
+    out.textContent = 'Không kết nối được. Vui lòng thử lại sau.';
   } finally {
-    currentAbort = null;
     setRunningState(false);
   }
 }

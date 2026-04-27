@@ -1,82 +1,126 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  HoàngSâm BDS — Email Notification API  (Google Apps Script)
+//  HoàngSâm BDS — Email + AI Chat API  (Google Apps Script)
 // ═══════════════════════════════════════════════════════════════════════════
-//  DEPLOY INSTRUCTIONS (one-time, ~2 minutes):
-//  1. Go to https://script.google.com → New project → paste this file
-//  2. Click "Deploy" → "New deployment"
-//  3. Type: Web app
-//     Execute as: Me
-//     Who has access: Anyone
-//  4. Click Deploy → Copy the Web App URL
-//  5. Paste URL into src/ai-ui.js → const EMAIL_API_URL = '<your-url>'
+//  SETUP (one-time):
+//  1. Deploy as Web App → Anyone → copy URL → paste into src/ai-ui.js
+//  2. Set Gemini key: Project Settings → Script Properties → Add:
+//       Key: GEMINI_KEY   Value: AIzaSy...
+//  3. Re-deploy (new version) after setting the key
 // ═══════════════════════════════════════════════════════════════════════════
 
 const ADMIN_EMAIL = 'nhhuy130@gmail.com';
-const SITE_NAME   = 'HoàngSâm BDS';
+const SITE_NAME   = 'HoangSam BDS';
+const GEMINI_MODEL = 'gemini-1.5-flash';
 
 /* ─── Router ─── */
 function doPost(e) {
   try {
+    // CORS preflight (không cần với no-cors nhưng để an toàn)
     const data = JSON.parse(e.postData.contents);
     const type = (data.type || '').trim();
-    if      (type === 'appointment') sendAppointmentEmail(data);
-    else if (type === 'inquiry')     sendInquiryEmail(data);
-    else throw new Error('Unknown notification type: ' + type);
-    return ok();
+
+    if      (type === 'chat')        return handleChat(data);
+    else if (type === 'appointment') { sendAppointmentEmail(data); return ok(); }
+    else if (type === 'inquiry')     { sendInquiryEmail(data);     return ok(); }
+    else throw new Error('Unknown type: ' + type);
   } catch (err) {
     return errResponse(err.message);
   }
 }
 
-// Health-check endpoint
 function doGet() {
-  return json({ status: 'ok', service: SITE_NAME + ' Email API' });
+  return json({ status: 'ok', service: SITE_NAME + ' API' });
+}
+
+/* ─── AI Chat (Gemini proxy) ─── */
+function handleChat(d) {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
+  if (!key) return errResponse('GEMINI_KEY not set in Script Properties');
+
+  const systemPrompt = d.systemPrompt || 'Ban la tu van vien bat dong san chuyen nghiep cua HoangSam BDS tai TP.HCM. Tra loi ngan gon, chinh xac, than thien.';
+  const userPrompt   = d.userPrompt   || '';
+  const listings     = d.listings     || '';
+
+  const fullSystem = systemPrompt +
+    (listings ? '\n\n=== TIN DANG HIEN CO ===\n' + listings : '');
+
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+              GEMINI_MODEL + ':generateContent?key=' + key;
+
+  const payload = {
+    systemInstruction: { parts: [{ text: fullSystem }] },
+    contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+    generationConfig: {
+      temperature: 0.75,
+      maxOutputTokens: 1024,
+      topP: 0.95,
+    },
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+    ],
+  };
+
+  try {
+    const resp = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+    });
+
+    const result = JSON.parse(resp.getContentText());
+
+    if (result.error) {
+      return errResponse('Gemini error: ' + result.error.message);
+    }
+
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return json({ ok: true, text });
+
+  } catch (err) {
+    return errResponse('Fetch failed: ' + err.message);
+  }
 }
 
 /* ─── Appointment email ─── */
 function sendAppointmentEmail(d) {
-  const subject = '[' + SITE_NAME + '] Lịch hẹn xem nhà — ' + d.name;
+  const subject = '[' + SITE_NAME + '] Lich hen xem nha - ' + d.name;
   const lines = [
-    '════════════════════════════════',
-    '  LỊCH HẸN XEM NHÀ MỚI',
-    '════════════════════════════════',
+    'LICH HEN XEM NHA MOI',
     '',
-    'Khách:     ' + d.name,
-    'SĐT:       ' + d.phone,
-    'Thời gian: ' + d.time + ' · ' + d.date,
+    'Khach:     ' + d.name,
+    'SDT:       ' + d.phone,
+    'Thoi gian: ' + d.time + ' - ' + d.date,
   ];
-  if (d.listingTitle) lines.push('Nhà:       ' + d.listingTitle);
-  if (d.note)         lines.push('Ghi chú:   ' + d.note);
-  lines.push('', '────────────────────────────────');
-  lines.push('(Tự động từ website ' + SITE_NAME + ')');
-
+  if (d.listingTitle) lines.push('Nha:       ' + d.listingTitle);
+  if (d.note)         lines.push('Ghi chu:   ' + d.note);
+  lines.push('', '(Tu dong tu website ' + SITE_NAME + ')');
   GmailApp.sendEmail(ADMIN_EMAIL, subject, lines.join('\n'));
 }
 
-/* ─── Inquiry / Chat email ─── */
+/* ─── Inquiry email ─── */
 function sendInquiryEmail(d) {
-  const subject = '[' + SITE_NAME + '] Tin nhắn tư vấn — ' + d.name;
+  const subject = '[' + SITE_NAME + '] Tin nhan tu van - ' + d.name;
   const lines = [
-    '════════════════════════════════',
-    '  TIN NHẮN TỪ KHÁCH HÀNG',
-    '════════════════════════════════',
+    'TIN NHAN TU KHACH HANG',
     '',
-    'Tên:   ' + d.name,
-    'SĐT:   ' + d.phone,
+    'Ten:   ' + d.name,
+    'SDT:   ' + d.phone,
     '',
-    'Nội dung:',
+    'Noi dung:',
     d.message,
     '',
-    '────────────────────────────────',
-    '(Tự động từ website ' + SITE_NAME + ')',
+    '(Tu dong tu website ' + SITE_NAME + ')',
   ];
-
   GmailApp.sendEmail(ADMIN_EMAIL, subject, lines.join('\n'));
 }
 
 /* ─── Helpers ─── */
-function ok()            { return json({ ok: true }); }
-function errResponse(m)  { return json({ ok: false, error: m }); }
+function ok()           { return json({ ok: true }); }
+function errResponse(m) { return json({ ok: false, error: m }); }
 function json(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
