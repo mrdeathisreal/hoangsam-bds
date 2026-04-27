@@ -11,7 +11,7 @@
 
 import { getAgent, getSystemPromptForRole } from './ai-agents.js';
 import { streamPrompt, hasApiKey, getApiKey, setApiKey, describeError } from './ai-client.js';
-import { getAllListings, addAppointment } from './store.js';
+import { getAllListings, addAppointment, addInquiry } from './store.js';
 import { isAdmin, subscribe as subscribeAuth } from './auth.js';
 import { t, getLang, onLangChange } from './i18n.js';
 import { isContentAllowed, getBlockedMessage } from './content-filter.js';
@@ -19,6 +19,25 @@ import { isContentAllowed, getBlockedMessage } from './content-filter.js';
 const ROLE_KEY = 'hs_role'; // 'ctv' | 'client'
 const ADMIN_ZALO = '0909326188';
 const ADMIN_ZALO_URL = `https://zalo.me/${ADMIN_ZALO}`;
+
+// ── Email API (Google Apps Script) ──────────────────────────────────────────
+// Sau khi deploy gas/email-api.gs, paste URL vào đây:
+const EMAIL_API_URL = 'https://script.google.com/macros/s/PASTE_YOUR_DEPLOYMENT_URL_HERE/exec';
+
+async function sendEmailNotification(payload) {
+  if (!EMAIL_API_URL.includes('PASTE_YOUR')) {
+    try {
+      await fetch(EMAIL_API_URL, {
+        method: 'POST',
+        mode: 'no-cors', // GAS không cần CORS preflight
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      console.warn('[email] notification failed (non-critical):', e);
+    }
+  }
+}
 
 /** Đọc region từ sessionStorage (app.js detectCallRegion() đã set) */
 function getRegion() {
@@ -107,6 +126,7 @@ export function initAiUi() {
   wireAgentTriggers();
   wireAgentModal();
   wireAppointment();
+  wireInquiry();
   wireSettings();
   applyRoleVisibility();
 
@@ -309,9 +329,21 @@ function openAgentModal(agentId) {
   // Banner thiếu key: chỉ ADMIN thấy (khách/CTV không cần biết)
   $('ai-no-key').hidden = hasApiKey() || !isAdm;
 
+  // Guest chat: hiện inquiry form, ẩn AI chat panel
+  const guestMode = agentId === 'chat' && !hasApiKey() && !isAdm;
+  $('ai-chat-section').hidden        = guestMode;
+  $('ai-chat-output-section').hidden = guestMode;
+  $('ai-inquiry-section').hidden     = !guestMode;
+  if (guestMode) {
+    // Reset inquiry form
+    ['inq-name','inq-phone','inq-message'].forEach(id => { const el = $(id); if (el) el.value = ''; });
+    const s = $('inq-status'); if (s) { s.textContent = ''; s.className = 'apt-status'; }
+    const btn = $('inq-submit'); if (btn) { btn.disabled = false; btn.textContent = 'Gửi yêu cầu tư vấn'; }
+  }
+
   $('ai-modal').setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
-  requestAnimationFrame(() => $('ai-input').focus());
+  requestAnimationFrame(() => guestMode ? $('inq-name')?.focus() : $('ai-input').focus());
 }
 
 function closeAgentModal() {
@@ -441,6 +473,50 @@ function flash(btn, msg) {
   const orig = btn.textContent;
   btn.textContent = msg;
   setTimeout(() => { btn.textContent = orig; }, 1200);
+}
+
+/* ───────────────────────── Inquiry (guest chat) ───────────────────────── */
+
+function wireInquiry() {
+  $('inq-submit')?.addEventListener('click', submitInquiry);
+  ['inq-name','inq-phone'].forEach(id => {
+    $(id)?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submitInquiry(); }
+    });
+  });
+}
+
+async function submitInquiry() {
+  const name    = ($('inq-name')?.value    || '').trim();
+  const phone   = ($('inq-phone')?.value   || '').trim();
+  const message = ($('inq-message')?.value || '').trim();
+  const status  = $('inq-status');
+  const btn     = $('inq-submit');
+
+  if (!name || !phone || !message) {
+    if (status) { status.textContent = 'Vui lòng điền đầy đủ thông tin.'; status.className = 'apt-status apt-status--err'; }
+    return;
+  }
+  if (!/^[0-9+\s\-()]{7,15}$/.test(phone)) {
+    if (status) { status.textContent = 'Số điện thoại không hợp lệ.'; status.className = 'apt-status apt-status--err'; }
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Đang gửi...'; }
+
+  const payload = { name, phone, message, status: 'new' };
+
+  // 1. Save to Firestore (best-effort)
+  try { await addInquiry(payload); } catch (e) { console.warn('[inquiry] Firestore save failed:', e); }
+
+  // 2. Send email notification
+  await sendEmailNotification({ type: 'inquiry', ...payload });
+
+  if (status) {
+    status.textContent = '✓ Đã gửi! Chúng tôi sẽ liên hệ bạn trong vòng 30 phút.';
+    status.className = 'apt-status apt-status--ok';
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Đã gửi'; }
 }
 
 /* ───────────────────────── Appointment ───────────────────────── */
@@ -611,6 +687,7 @@ async function submitAppointment() {
   $('apt-submit').disabled = true;
   $('apt-submit').textContent = 'Đang gửi...';
 
+  // 1. Save to Firestore (best-effort)
   try {
     await addAppointment(payload);
     try { localStorage.setItem('hs_last_apt', String(Date.now())); } catch {}
@@ -618,19 +695,16 @@ async function submitAppointment() {
     console.warn('[apt] Firestore save failed, continuing:', e);
   }
 
+  // 2. Send email notification (primary — reliable)
+  await sendEmailNotification({ type: 'appointment', ...payload });
+
+  // 3. Zalo backup — copy message + open app
   const message = buildZaloMessage(payload);
-  let copied = false;
-  try {
-    await navigator.clipboard.writeText(message);
-    copied = true;
-  } catch {}
-
-  status.innerHTML = copied
-    ? 'Đã ghi nhận. Nội dung đã copy — paste vào Zalo gửi Marshall Ng để xác nhận.'
-    : 'Đã ghi nhận. Mở Zalo để thông báo Marshall Ng.';
-  status.className = 'apt-status apt-status--ok';
-
+  try { await navigator.clipboard.writeText(message); } catch {}
   window.open(ADMIN_ZALO_URL, '_blank', 'noopener,noreferrer');
+
+  status.innerHTML = '✓ Đã ghi nhận lịch hẹn! Bạn sẽ nhận xác nhận qua điện thoại trong vòng 30 phút.';
+  status.className = 'apt-status apt-status--ok';
 
   $('apt-submit').disabled = false;
   $('apt-submit').textContent = 'Xác nhận & gửi Zalo';

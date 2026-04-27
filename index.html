@@ -279,7 +279,8 @@
         <div id="ai-templates" class="ai-templates"></div>
       </section>
 
-      <section class="ai-section">
+      <!-- ── AI chat (admin/CTV with Gemini key) ── -->
+      <section id="ai-chat-section" class="ai-section">
         <h3 class="ai-section__title" data-i18n="ai.input_title">Yêu cầu của bạn</h3>
         <textarea id="ai-input" class="ai-input" rows="4"
                   placeholder="Nhập yêu cầu của bạn..."></textarea>
@@ -289,13 +290,35 @@
           <button id="ai-book-from-chat" type="button" class="btn" style="background:#f59e0b;color:#fff;margin-left:auto" hidden data-i18n="ai.book_from_chat">Đặt lịch xem nhà</button>
         </div>
       </section>
-
-      <section class="ai-section">
+      <section id="ai-chat-output-section" class="ai-section">
         <div class="ai-output-head">
           <h3 class="ai-section__title" data-i18n="ai.output_title">Phản hồi</h3>
           <button id="ai-copy-btn" type="button" class="btn btn--ghost btn--sm" data-i18n="ai.copy">Copy</button>
         </div>
         <pre id="ai-output" class="ai-output ai-output--empty" data-placeholder="Phản hồi sẽ hiện ở đây..."></pre>
+      </section>
+
+      <!-- ── Inquiry form (guest, no Gemini key) ── -->
+      <section id="ai-inquiry-section" class="ai-section" hidden>
+        <h3 class="ai-section__title">Để lại thông tin — chúng tôi phản hồi trong 30 phút</h3>
+        <div class="apt-form" style="margin-top:12px">
+          <div class="apt-row">
+            <label class="apt-label">Họ tên *</label>
+            <input id="inq-name"    type="text" class="apt-input" placeholder="Nguyễn Văn A" autocomplete="name" />
+          </div>
+          <div class="apt-row">
+            <label class="apt-label">Số điện thoại *</label>
+            <input id="inq-phone"   type="tel"  class="apt-input" placeholder="0912 345 678" autocomplete="tel" />
+          </div>
+          <div class="apt-row">
+            <label class="apt-label">Câu hỏi / Yêu cầu *</label>
+            <textarea id="inq-message" class="apt-input" rows="3" placeholder="Tôi muốn hỏi về..."></textarea>
+          </div>
+          <p id="inq-status" class="apt-status" style="margin-top:8px"></p>
+          <button id="inq-submit" type="button" class="btn btn--primary" style="width:100%;margin-top:4px">
+            Gửi yêu cầu tư vấn
+          </button>
+        </div>
       </section>
     </div>
   </div>

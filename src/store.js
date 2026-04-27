@@ -210,6 +210,28 @@ export async function addAppointment(payload) {
   }
 }
 
+/**
+ * addInquiry — lưu tin nhắn tư vấn của khách (không cần auth).
+ * Collection: inquiries/{autoId}
+ */
+export async function addInquiry(payload) {
+  try {
+    const { addDoc, collection, serverTimestamp } = await import(
+      'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
+    );
+    const ref = collection(db, 'inquiries');
+    const docRef = await addDoc(ref, {
+      ...payload,
+      createdAt: serverTimestamp(),
+      status: 'new',
+    });
+    return { id: docRef.id };
+  } catch (e) {
+    console.warn('[store] addInquiry failed:', e);
+    throw e;
+  }
+}
+
 /** getById — tìm listing trong cache. */
 export function getById(id) {
   return _cache.find(x => x.id === id) || null;
