@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// ============================================================================
+// hoangsam.bds — Cloud Storage Rules (ảnh listing)
+// ----------------------------------------------------------------------------
+// Path convention:  /listings/{listingId}/{fileName}
+//   - Guest: đọc công khai (để hiển thị trên site).
+//   - Admin: upload/xoá, max 5MB, chỉ ảnh (image/*).
+// ============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.uid in [
+               'uL3mjYlRkbbWh20ICNjAPFL1Sdh1'
+             ];
+    }
+
+    match /listings/{listingId}/{fileName} {
+      allow read: if true;
+
+      allow write: if isAdmin()
+                   && request.resource.size < 5 * 1024 * 1024   // ≤ 5 MB
+                   && request.resource.contentType.matches('image/.*');
+
+      allow delete: if isAdmin();
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

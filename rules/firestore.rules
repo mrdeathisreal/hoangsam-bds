@@ -1,0 +1,146 @@
+rules_version = '2';
+
+// ============================================================================
+// hoangsam.bds — Firestore Security Rules (simplified)
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ──────────────── Helpers ────────────────
+
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.uid in ['uL3mjYlRkbbWh20ICNjAPFL1Sdh1'];
+    }
+
+    function allowedKeys() {
+      return [
+        'title','slug','location','area','propertyType','legalStatus',
+        'priceValue','priceLabel','bedrooms','bathrooms','areaSqm',
+        'image','images','description','coordinates','features',
+        'title_en','title_zh','description_en','description_zh',
+        'featured','status',
+        'createdAt','updatedAt','_clientTime'
+      ];
+    }
+
+    function hasRequired(d) {
+      return d.title is string
+          && d.title.size() >= 5 && d.title.size() <= 120
+          && d.location is string
+          && d.location.size() >= 3 && d.location.size() <= 200
+          && d.priceValue is number
+          && d.priceValue >= 0
+          && d.priceLabel is string
+          && d.priceLabel.size() <= 50
+          && d.slug is string
+          && d.slug.size() <= 100;
+    }
+
+    function hasValidOptional(d) {
+      return (!('area' in d)         || d.area is string)
+          && (!('propertyType' in d) || d.propertyType is string)
+          && (!('legalStatus' in d)  || d.legalStatus is string)
+          && (!('bedrooms' in d)     || d.bedrooms is int)
+          && (!('bathrooms' in d)    || d.bathrooms is int)
+          && (!('areaSqm' in d)      || d.areaSqm is number)
+          && (!('image' in d)        || d.image is string)
+          && (!('images' in d)       || d.images is list)
+          && (!('description' in d)  || d.description is string)
+          && (!('features' in d)     || d.features is list)
+          && (!('coordinates' in d)  || d.coordinates is map)
+          && (!('featured' in d)     || d.featured is bool)
+          && (!('status' in d)       || d.status == null || (d.status is string && d.status in ['new','deposit','sold','repair','renting']));
+    }
+
+    function hasValidTranslations(d) {
+      return (!('title_en' in d)       || d.title_en is string)
+          && (!('title_zh' in d)       || d.title_zh is string)
+          && (!('description_en' in d) || d.description_en is string)
+          && (!('description_zh' in d) || d.description_zh is string);
+    }
+
+    function isValidListing() {
+      return hasRequired(request.resource.data)
+          && hasValidOptional(request.resource.data)
+          && hasValidTranslations(request.resource.data)
+          && request.resource.data.keys().hasOnly(allowedKeys());
+    }
+
+    // ──────────────── houses ────────────────
+
+    match /houses/{docId} {
+      allow read: if true;
+
+      allow create: if isAdmin() && isValidListing();
+
+      allow update: if isAdmin() && isValidListing()
+                    && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if isAdmin();
+
+      // ──────────────── comments (subcollection) ────────────────
+      // Khách không cần đăng nhập vẫn được bình luận, nhưng:
+      //   - name: 1-80 ký tự
+      //   - message: 1-500 ký tự
+      //   - createdAt: server timestamp (client không gắn được)
+      //   - không có key nào khác (chặn spam field lạ / lưu lớn)
+      // Sửa / xoá chỉ admin.
+      match /comments/{commentId} {
+        allow read: if true;
+
+        allow create: if
+             request.resource.data.keys().hasOnly(['name','message','createdAt'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.message is string
+          && request.resource.data.message.size() > 0
+          && request.resource.data.message.size() <= 500;
+
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ──────────────── contacts ────────────────
+
+    match /contacts/{docId} {
+      allow read:   if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['name','phone','message','createdAt','listingId'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 100
+                    && request.resource.data.phone is string
+                    && request.resource.data.phone.size() >= 9
+                    && request.resource.data.phone.size() <= 15
+                    && request.resource.data.message is string
+                    && request.resource.data.message.size() <= 1000;
+      allow update, delete: if isAdmin();
+    }
+
+    // ──────────────── appointments ────────────────
+    // Khách đặt lịch xem nhà qua web. Guest được tạo, chỉ admin đọc/update.
+
+    match /appointments/{docId} {
+      allow read:   if isAdmin();
+      allow create: if request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 100
+                    && request.resource.data.phone is string
+                    && request.resource.data.phone.size() >= 8
+                    && request.resource.data.phone.size() <= 20
+                    && request.resource.data.date is string
+                    && request.resource.data.time is string
+                    && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
+    // ──────────────── catch-all ────────────────
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

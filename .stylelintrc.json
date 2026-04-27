@@ -1,0 +1,50 @@
+{
+  "extends": "stylelint-config-standard",
+  "rules": {
+    "color-no-hex": [true, {
+      "message": "Dùng design token (var(--brand), var(--ink)...) thay vì hex. Chỉ cho phép hex trong :root.",
+      "severity": "warning"
+    }],
+    "declaration-property-value-disallowed-list": {
+      "/^font-size$/": ["/^\\d+px$/", "/^\\d+rem$/", "/clamp\\(/"],
+      "/^box-shadow$/": ["/^\\d/"]
+    },
+    "alpha-value-notation": null,
+    "color-function-notation": null,
+    "custom-property-empty-line-before": null,
+    "declaration-block-no-redundant-longhand-properties": null,
+    "declaration-block-single-line-max-declarations": null,
+    "no-descending-specificity": null,
+    "selector-class-pattern": null,
+    "rule-empty-line-before": null,
+    "comment-empty-line-before": null,
+    "media-feature-range-notation": null,
+    "shorthand-property-no-redundant-values": null,
+    "declaration-empty-line-before": null,
+    "value-keyword-case": null,
+    "at-rule-empty-line-before": null,
+    "length-zero-no-unit": null,
+    "number-max-precision": null,
+    "color-hex-length": null,
+    "property-no-vendor-prefix": null,
+    "value-no-vendor-prefix": null,
+    "no-duplicate-selectors": [true, { "disallowInList": false }],
+    "keyframes-name-pattern": null,
+    "font-family-name-quotes": null,
+    "font-family-no-missing-generic-family-keyword": null,
+    "no-descending-specificity": null,
+    "declaration-block-no-shorthand-property-overrides": null
+  },
+  "overrides": [
+    {
+      "files": ["styles.css"],
+      "rules": {
+        "color-no-hex": [true, {
+          "message": "Hex chỉ được phép trong :root. Dùng var(--*) cho các khai báo khác.",
+          "severity": "warning"
+        }]
+      }
+    }
+  ],
+  "ignoreFiles": ["node_modules/**/*"]
+}

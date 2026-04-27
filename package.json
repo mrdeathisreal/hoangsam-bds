@@ -1,0 +1,15 @@
+{
+  "name": "hoangsam-bds",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dev tooling only — project runs as plain static files, no bundler required.",
+  "scripts": {
+    "lint:css": "stylelint 'styles.css'",
+    "lint:css:fix": "stylelint 'styles.css' --fix",
+    "serve": "python3 -m http.server 8787"
+  },
+  "devDependencies": {
+    "stylelint": "^16.2.1",
+    "stylelint-config-standard": "^36.0.0"
+  }
+}

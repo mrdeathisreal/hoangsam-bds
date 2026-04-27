@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="color-scheme" content="light only" />
+  <!-- Preconnect + module preload để giảm chain request / LCP -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+  <link rel="preconnect" href="https://ipapi.co" />
+  <link rel="dns-prefetch" href="https://firebaseinstallations.googleapis.com" />
+
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="modulepreload" href="./app.js" />
+  <link rel="modulepreload" href="./src/i18n.js" />
+  <link rel="modulepreload" href="./src/store.js" />
+  <link rel="modulepreload" href="./src/ui-render.js" />
+
+  <!-- Critical CSS inline: layout above-the-fold để tránh FOUC khi stylesheet chưa tải -->
+  <style>
+    :root{--_hdr:64px}
+    html,body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:#f7fafc;color:#0f172a}
+    .app-header{height:var(--_hdr);background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:50}
+    .container{max-width:1200px;margin:0 auto;padding:0 16px}
+    .app-header__inner{display:flex;align-items:center;justify-content:space-between;height:var(--_hdr);gap:12px}
+    .hero{padding:40px 0 28px;background:linear-gradient(180deg,#f0fdfa 0%,#f7fafc 100%)}
+    .hero h1{font-size:clamp(24px,5vw,42px);margin:0 0 8px;font-weight:800}
+    .bento-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));min-height:300px}
+    .card__media{aspect-ratio:4/3;background:#eef2f7}
+  </style>
+
+  <title>Hoàng Sâm — Bất động sản chính chủ tại TP.HCM</title>
+  <meta name="description" content="Danh mục bất động sản chính chủ tại TP.HCM — nhà phố, căn hộ, đất nền. Marshall Ng." />
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%230f766e%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-9.5z%22/></svg>" />
+</head>
+<body>
+
+  <!-- Skip to main content (a11y: first tab target, WCAG 2.2 AA) -->
+  <a href="#main" class="skip-link" data-i18n="a11y.skip">Bỏ qua đến nội dung chính</a>
+
+
+  <!-- ══════════════════════ HEADER ══════════════════════ -->
+  <header class="app-header">
+    <div class="container app-header__inner">
+      <a href="/" id="brand" class="brand brand--mark-only" aria-label="Hoàng Sâm">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-9.5z"/>
+          </svg>
+        </span>
+      </a>
+
+      <nav class="app-header__nav">
+        <!-- Role toggle: OFF = Khách · ON = Cộng tác viên -->
+        <label class="role-toggle" title="Bật = Cộng tác viên · Tắt = Khách hàng">
+          <input id="role-toggle-input" type="checkbox" />
+          <span class="role-toggle__track">
+            <span class="role-toggle__thumb"></span>
+          </span>
+          <span id="role-toggle-label" class="role-toggle__label">🏡 Khách</span>
+        </label>
+
+        <!-- Language switcher -->
+        <div id="lang-switch" class="lang-switch" role="group" aria-label="Language"></div>
+
+        <!-- Call button (geo-aware) -->
+        <a id="btn-call" class="btn btn--call" href="tel:+84901181881" data-i18n-aria="nav.call">
+          <span class="btn__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7 12.8 12.8 0 0 0 .7 2.8 2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5 12.8 12.8 0 0 0 2.8.7A2 2 0 0 1 22 16.9z"/>
+            </svg>
+          </span>
+          <span class="btn__label">
+            <span class="btn__label-main">0901 181 881</span>
+          </span>
+        </a>
+
+        <button id="btn-add" class="btn btn--primary" type="button">
+          <span class="btn__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </span>
+          <span class="btn__label" data-i18n="nav.add">Thêm tin</span>
+        </button>
+
+        <!--
+          Đăng nhập ẩn hoàn toàn khỏi UI.
+          - Admin login: triple-click logo hoặc thêm #admin vào URL.
+          - Bấm "Thêm tin" khi chưa login → tự mở login modal.
+          - Đăng xuất: triple-click logo lần nữa để mở login modal đã có nút out.
+        -->
+      </nav>
+    </div>
+  </header>
+
+  <!-- ══════════════════════ HERO ══════════════════════ -->
+  <section class="hero">
+    <div class="container">
+      <h1 class="hero__title" data-i18n="hero.title">Bất động sản chính chủ tại TP.HCM</h1>
+      <p class="hero__subtitle" data-i18n="hero.subtitle">Nhà phố · Căn hộ · Đất nền — minh bạch pháp lý, hình ảnh thật.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ FILTER BAR ══════════════════════ -->
+  <section class="filter-bar">
+    <div class="container">
+      <div class="filter-bar__inner">
+        <div class="field filter-bar__search">
+          <label for="filter-search" class="visually-hidden">Search</label>
+          <span class="field__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"/>
+              <path d="m20 20-3.5-3.5"/>
+            </svg>
+          </span>
+          <input
+            id="filter-search"
+            type="search"
+            data-i18n-ph="filter.search_ph"
+            placeholder="Tìm theo tên, địa chỉ, khu vực..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <div class="field">
+          <label for="filter-area" class="visually-hidden">District</label>
+          <select id="filter-area">
+            <option value="" data-i18n="filter.area_all">Tất cả khu vực</option>
+            <option value="Quận 1"     data-i18n-area="Quận 1">Quận 1</option>
+            <option value="Quận 3"     data-i18n-area="Quận 3">Quận 3</option>
+            <option value="Quận 4"     data-i18n-area="Quận 4">Quận 4</option>
+            <option value="Quận 5"     data-i18n-area="Quận 5">Quận 5</option>
+            <option value="Quận 6"     data-i18n-area="Quận 6">Quận 6</option>
+            <option value="Quận 7"     data-i18n-area="Quận 7">Quận 7</option>
+            <option value="Quận 8"     data-i18n-area="Quận 8">Quận 8</option>
+            <option value="Quận 10"    data-i18n-area="Quận 10">Quận 10</option>
+            <option value="Quận 11"    data-i18n-area="Quận 11">Quận 11</option>
+            <option value="Quận 12"    data-i18n-area="Quận 12">Quận 12</option>
+            <option value="Bình Tân"   data-i18n-area="Bình Tân">Bình Tân</option>
+            <option value="Bình Thạnh" data-i18n-area="Bình Thạnh">Bình Thạnh</option>
+            <option value="Gò Vấp"     data-i18n-area="Gò Vấp">Gò Vấp</option>
+            <option value="Phú Nhuận"  data-i18n-area="Phú Nhuận">Phú Nhuận</option>
+            <option value="Tân Bình"   data-i18n-area="Tân Bình">Tân Bình</option>
+            <option value="Tân Phú"    data-i18n-area="Tân Phú">Tân Phú</option>
+            <option value="Thủ Đức"    data-i18n-area="Thủ Đức">Thủ Đức</option>
+            <option value="Bình Chánh" data-i18n-area="Bình Chánh">Bình Chánh</option>
+            <option value="Hóc Môn"    data-i18n-area="Hóc Môn">Hóc Môn</option>
+            <option value="Nhà Bè"     data-i18n-area="Nhà Bè">Nhà Bè</option>
+            <option value="Củ Chi"     data-i18n-area="Củ Chi">Củ Chi</option>
+            <option value="Cần Giờ"    data-i18n-area="Cần Giờ">Cần Giờ</option>
+            <option value="Khác"       data-i18n-area="Khác">Khác</option>
+          </select>
+        </div>
+
+        <button id="filter-reset" class="btn btn--ghost btn--sm" type="button" data-i18n="filter.reset">Xoá lọc</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ LISTINGS ══════════════════════ -->
+  <main id="main" class="main" tabindex="-1">
+    <div class="container">
+      <div class="listings-meta">
+        <h2 class="listings-title" data-i18n="listings.title">Tin đăng</h2>
+        <span id="listings-count" class="listings-count">—</span>
+      </div>
+
+      <div id="listings-grid" class="bento-grid" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <!-- ══════════════════════ TEAM SECTION (role-aware) ══════════════════════ -->
+  <section class="team" aria-labelledby="team-title">
+    <div class="container">
+      <header class="team__header">
+        <h2 id="team-title" class="team__title" data-i18n="team.title">Đội ngũ tư vấn Hoàng Sâm</h2>
+        <p class="team__subtitle" data-i18n="team.subtitle">Bất động sản chính chủ tại TP.HCM — đội ngũ tư vấn được đào tạo bài bản, am hiểu pháp lý Việt Nam, phản hồi nhanh, phục vụ khách trong nước và nước ngoài.</p>
+      </header>
+
+      <!-- ═══════ VIEW 1: CLIENT (khách hàng) — chỉ 2 nút actions ═══════ -->
+      <div class="client-view" data-role-view="client">
+        <div class="client-stats">
+          <div class="client-stat">
+            <span class="client-stat__num">5+</span>
+            <span class="client-stat__label" data-i18n="client.years">năm kinh nghiệm BĐS Sài Gòn</span>
+          </div>
+          <div class="client-stat">
+            <span class="client-stat__num">24/7</span>
+            <span class="client-stat__label" data-i18n="client.support">đội ngũ tư vấn sẵn sàng phản hồi</span>
+          </div>
+          <div class="client-stat">
+            <span class="client-stat__num">100%</span>
+            <span class="client-stat__label" data-i18n="client.legal">chính chủ, pháp lý minh bạch</span>
+          </div>
+        </div>
+
+        <p class="client-pitch" data-i18n="client.pitch">Đội ngũ của chúng tôi đã được trang bị kiến thức chuyên sâu về tất cả tin đăng hiện có, pháp lý BĐS Việt Nam, quy trình công chứng sang tên, và vay ngân hàng. Bấm nút bên dưới để được tư vấn trực tiếp hoặc đặt lịch xem nhà.</p>
+
+        <div class="client-actions">
+          <button id="client-chat-btn" type="button" class="btn btn--primary btn--xl">
+            <span data-i18n="client.chat">Chat với tư vấn viên</span>
+          </button>
+          <button id="client-book-btn" type="button" class="btn btn--xl btn--gold">
+            <span data-i18n="client.book">Đặt lịch xem nhà</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ═══════ VIEW 2: CTV (cộng tác viên) — full 2 AI agents ═══════ -->
+      <div class="ctv-view" data-role-view="ctv" hidden>
+        <div class="team-grid">
+          <!-- Chat agent -->
+          <article class="team-card team-card--lead team-card--ai" data-agent="chat">
+            <span class="team-card__badge team-card__badge--pro" data-i18n="team.pro_badge">Đang hoạt động</span>
+            <div class="team-card__avatar team-card__avatar--mono" aria-hidden="true">TV</div>
+            <div class="team-card__body">
+              <h4 class="team-card__name" data-i18n="team.chat_name">Tư vấn viên</h4>
+              <p class="team-card__role" data-i18n="team.chat_role">Chat BĐS + Đặt lịch xem nhà</p>
+              <p class="team-card__bio" data-i18n="team.chat_bio">Biết toàn bộ tin đăng hiện có. Trả lời khách, qualify lead, gợi ý đặt lịch.</p>
+              <button type="button" class="team-card__cta" data-i18n="team.open_tool">Mở chat</button>
+            </div>
+          </article>
+
+          <!-- Formatter agent -->
+          <article class="team-card team-card--ai" data-agent="formatter">
+            <span class="team-card__badge team-card__badge--pro" data-i18n="team.pro_badge">Đang hoạt động</span>
+            <div class="team-card__avatar" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+              </svg>
+            </div>
+            <div class="team-card__body">
+              <h4 class="team-card__name" data-i18n="team.formatter_name">Content Formatter</h4>
+              <p class="team-card__role" data-i18n="team.formatter_role">Thô → FB post chuẩn</p>
+              <p class="team-card__bio" data-i18n="team.formatter_bio">Paste nội dung rời rạc → ra post Facebook emoji + bullet + hashtag đúng mẫu.</p>
+              <button type="button" class="team-card__cta" data-i18n="team.open_tool">Mở chat</button>
+            </div>
+          </article>
+        </div>
+        <button id="ai-settings-btn" class="ai-header-btn" type="button" data-admin-only hidden style="margin-top:24px" data-i18n="team.settings_btn">Cài đặt API key</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ AI AGENT MODAL (simplified) ══════════════════════ -->
+  <div id="ai-modal" class="ai-modal" role="dialog" aria-modal="true" aria-labelledby="ai-agent-name" aria-hidden="true">
+    <div class="ai-modal__panel" role="document">
+      <header class="ai-modal__head">
+        <div class="ai-modal__title">
+          <span id="ai-agent-emoji" class="ai-modal__emoji" aria-hidden="true"></span>
+          <div>
+            <h2 id="ai-agent-name" class="ai-modal__name">Tư vấn viên</h2>
+            <p id="ai-agent-role" class="ai-modal__role">Chat BĐS</p>
+          </div>
+        </div>
+        <button id="ai-modal-close" class="icon-btn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </header>
+
+      <div id="ai-no-key" class="ai-banner" hidden>
+        <p data-i18n="ai.no_key_msg">Chưa có Gemini API key. Lấy free tại <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm Cài đặt.</p>
+      </div>
+
+      <details id="ai-system-details" class="ai-system" hidden>
+        <summary data-i18n="ai.show_system">System prompt (admin)</summary>
+        <pre id="ai-system-prompt" class="ai-system__pre"></pre>
+      </details>
+
+      <section id="ai-templates-section" class="ai-section" hidden>
+        <h3 class="ai-section__title" data-i18n="ai.templates_title">Mẫu prompt sẵn (bấm để điền)</h3>
+        <div id="ai-templates" class="ai-templates"></div>
+      </section>
+
+      <section class="ai-section">
+        <h3 class="ai-section__title" data-i18n="ai.input_title">Yêu cầu của bạn</h3>
+        <textarea id="ai-input" class="ai-input" rows="4"
+                  placeholder="Nhập yêu cầu của bạn..."></textarea>
+        <div class="ai-actions">
+          <button id="ai-run-btn" type="button" class="btn btn--primary" data-i18n="ai.run">Gửi</button>
+          <button id="ai-stop-btn" type="button" class="btn btn--ghost" hidden data-i18n="ai.stop">Dừng</button>
+          <button id="ai-book-from-chat" type="button" class="btn" style="background:#f59e0b;color:#fff;margin-left:auto" hidden data-i18n="ai.book_from_chat">Đặt lịch xem nhà</button>
+        </div>
+      </section>
+
+      <section class="ai-section">
+        <div class="ai-output-head">
+          <h3 class="ai-section__title" data-i18n="ai.output_title">Phản hồi</h3>
+          <button id="ai-copy-btn" type="button" class="btn btn--ghost btn--sm" data-i18n="ai.copy">Copy</button>
+        </div>
+        <pre id="ai-output" class="ai-output ai-output--empty" data-placeholder="Phản hồi sẽ hiện ở đây..."></pre>
+      </section>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ API KEY DIALOG ══════════════════════ -->
+  <div id="ai-key-dialog" class="ai-key-dialog" hidden>
+    <div class="ai-key-dialog__panel" role="dialog" aria-modal="true">
+      <h3 class="ai-key-dialog__title" data-i18n="ai.key_dialog_title">Cài đặt Gemini API key</h3>
+
+      <a class="ai-key-dialog__link" href="https://aistudio.google.com/app/apikey"
+         target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        <span data-i18n="ai.key_open_studio">Mở Google AI Studio (free 15 req/phút)</span>
+      </a>
+
+      <ol class="ai-key-dialog__steps">
+        <li data-i18n="ai.key_step_1">Đăng nhập bằng tài khoản Google của bạn</li>
+        <li data-i18n="ai.key_step_2">Bấm nút "Create API key" → Copy key vừa tạo</li>
+        <li data-i18n="ai.key_step_3">Dán key vào ô bên dưới rồi bấm Lưu</li>
+      </ol>
+
+      <p class="ai-key-dialog__privacy" data-i18n="ai.key_privacy">🔒 Key chỉ lưu trên máy bạn (localStorage) — không gửi đi đâu ngoài Google.</p>
+
+      <label class="ai-key-dialog__label" data-i18n="ai.key_input_label">API key</label>
+      <input id="ai-key-input" type="password" class="ai-key-dialog__input"
+             placeholder="AIzaSy..." autocomplete="off" spellcheck="false" />
+
+      <div class="ai-key-dialog__actions">
+        <button id="ai-key-cancel" type="button" class="btn btn--ghost" data-i18n="ai.key_cancel">Huỷ</button>
+        <button id="ai-key-save" type="button" class="btn btn--primary" data-i18n="ai.key_save">Lưu key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ FOOTER ══════════════════════ -->
+  <footer class="app-footer">
+    <div class="container app-footer__inner">
+      <div class="app-footer__brand">
+        <p data-i18n="footer.copyright">© hoangsam.bds · Bất động sản Sài Gòn</p>
+        <p class="app-footer__admin" data-i18n="nav.admin">Marshall Ng</p>
+      </div>
+
+      <div class="app-footer__links">
+        <a class="footer-social footer-social--fb"
+           href="https://www.facebook.com/hoang.huy.479254"
+           target="_blank" rel="noopener noreferrer"
+           aria-label="Facebook" data-i18n-aria="footer.facebook">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M22 12.07C22 6.5 17.52 2 12 2S2 6.5 2 12.07c0 5 3.66 9.15 8.44 9.93v-7.03H7.9v-2.9h2.54V9.85c0-2.51 1.5-3.9 3.78-3.9 1.1 0 2.24.2 2.24.2v2.47h-1.26c-1.24 0-1.63.77-1.63 1.57v1.88h2.78l-.45 2.9h-2.33V22c4.78-.78 8.43-4.93 8.43-9.93z"/>
+          </svg>
+        </a>
+        <a class="footer-social footer-social--line"
+           href="https://line.me/ti/p/nM8GnauZ8I"
+           target="_blank" rel="noopener noreferrer"
+           aria-label="LINE" data-i18n-aria="footer.line">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">
+            <text x="24" y="32" text-anchor="middle"
+                  font-family="system-ui, -apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+                  font-weight="800" font-size="18" letter-spacing="-0.3"
+                  fill="currentColor">LINE</text>
+          </svg>
+        </a>
+        <a class="footer-social footer-social--gmail"
+           href="mailto:nhhuy130@gmail.com"
+           aria-label="Email" data-i18n-aria="footer.gmail">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4.236-8 5-8-5V6l8 5 8-5v2.236z"/>
+          </svg>
+        </a>
+        <a class="footer-social footer-social--zalo"
+           href="https://zalo.me/0909326188"
+           target="_blank" rel="noopener noreferrer"
+           aria-label="Zalo" data-i18n-aria="footer.zalo">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">
+            <text x="24" y="32"
+                  text-anchor="middle"
+                  font-family="system-ui, -apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+                  font-weight="800"
+                  font-size="18"
+                  letter-spacing="-0.3"
+                  fill="currentColor">Zalo</text>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ══════════════════════ MODAL: Add/Edit listing ══════════════════════ -->
+  <div id="listing-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="listing-modal-title" aria-hidden="true">
+    <div class="modal__panel" role="document">
+      <div class="modal__head">
+        <h2 id="listing-modal-title" class="modal__title" data-i18n="form.add_title">Thêm tin đăng mới</h2>
+        <button id="listing-modal-close" class="icon-btn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <form id="listing-form" class="form" novalidate>
+        <div class="form__grid">
+          <div class="field field--full">
+            <label data-i18n="form.title">Tiêu đề</label>
+            <input name="title" type="text" required maxlength="120"
+                   data-i18n-ph="form.title_ph"
+                   placeholder="VD: Nhà phố 2 tầng, KDC Bình Hưng" />
+            <small class="field__error"></small>
+          </div>
+
+          <div class="field field--full">
+            <label data-i18n="form.location">Địa chỉ</label>
+            <input name="location" type="text" required maxlength="200"
+                   data-i18n-ph="form.location_ph"
+                   placeholder="Số nhà, đường, phường, quận" />
+            <small class="field__error"></small>
+          </div>
+
+          <div class="field">
+            <label data-i18n="form.area">Khu vực</label>
+            <select name="area">
+              <option value="" data-i18n="form.select_placeholder">-- Chọn --</option>
+              <option value="Quận 1"     data-i18n-area="Quận 1">Quận 1</option>
+              <option value="Quận 3"     data-i18n-area="Quận 3">Quận 3</option>
+              <option value="Quận 4"     data-i18n-area="Quận 4">Quận 4</option>
+              <option value="Quận 5"     data-i18n-area="Quận 5">Quận 5</option>
+              <option value="Quận 6"     data-i18n-area="Quận 6">Quận 6</option>
+              <option value="Quận 7"     data-i18n-area="Quận 7">Quận 7</option>
+              <option value="Quận 8"     data-i18n-area="Quận 8">Quận 8</option>
+              <option value="Quận 10"    data-i18n-area="Quận 10">Quận 10</option>
+              <option value="Quận 11"    data-i18n-area="Quận 11">Quận 11</option>
+              <option value="Quận 12"    data-i18n-area="Quận 12">Quận 12</option>
+              <option value="Bình Tân"   data-i18n-area="Bình Tân">Bình Tân</option>
+              <option value="Bình Thạnh" data-i18n-area="Bình Thạnh">Bình Thạnh</option>
+              <option value="Gò Vấp"     data-i18n-area="Gò Vấp">Gò Vấp</option>
+              <option value="Phú Nhuận"  data-i18n-area="Phú Nhuận">Phú Nhuận</option>
+              <option value="Tân Bình"   data-i18n-area="Tân Bình">Tân Bình</option>
+              <option value="Tân Phú"    data-i18n-area="Tân Phú">Tân Phú</option>
+              <option value="Thủ Đức"    data-i18n-area="Thủ Đức">Thủ Đức</option>
+              <option value="Bình Chánh" data-i18n-area="Bình Chánh">Bình Chánh</option>
+              <option value="Hóc Môn"    data-i18n-area="Hóc Môn">Hóc Môn</option>
+              <option value="Nhà Bè"     data-i18n-area="Nhà Bè">Nhà Bè</option>
+              <option value="Củ Chi"     data-i18n-area="Củ Chi">Củ Chi</option>
+              <option value="Cần Giờ"    data-i18n-area="Cần Giờ">Cần Giờ</option>
+              <option value="Khác"       data-i18n-area="Khác">Khác</option>
+            </select>
+            <small class="field__error"></small>
+          </div>
+
+          <div class="field">
+            <label data-i18n="form.property">Loại BĐS</label>
+            <select name="propertyType">
+              <option value="nha-pho"   data-i18n="property.nha-pho">Nhà phố</option>
+              <option value="can-ho"    data-i18n="property.can-ho">Căn hộ</option>
+              <option value="biet-thu"  data-i18n="property.biet-thu">Biệt thự</option>
+              <option value="dat-nen"   data-i18n="property.dat-nen">Đất nền</option>
+              <option value="shophouse" data-i18n="property.shophouse">Shophouse</option>
+              <option value="kho-xuong" data-i18n="property.kho-xuong">Kho/Xưởng</option>
+              <option value="khac"      data-i18n="property.khac">Khác</option>
+            </select>
+            <small class="field__error"></small>
+          </div>
+
+          <div class="field">
+            <label data-i18n="form.legal">Pháp lý</label>
+            <select name="legalStatus">
+              <option value="so-hong"          data-i18n="legal.so-hong">Sổ hồng</option>
+              <option value="so-do"            data-i18n="legal.so-do">Sổ đỏ</option>
+              <option value="hop-dong-mua-ban" data-i18n="legal.hop-dong-mua-ban">HĐ mua bán</option>
+              <option value="giay-tay"         data-i18n="legal.giay-tay">Giấy tay</option>
+              <option value="dang-cho"         data-i18n="legal.dang-cho">Đang chờ</option>
+              <option value="khac"             data-i18n="legal.khac">Khác</option>
+            </select>
+            <small class="field__error"></small>
+          </div>
+
+          <div class="field">
+            <label data-i18n="form.status">Hiện trạng</label>
+            <select name="status">
+              <option value=""         data-i18n="form.status_none">-- Không hiển thị (mặc định) --</option>
+              <option value="new"      data-i18n="status.new">Hàng mới</option>
+              <option value="deposit"  data-i18n="status.deposit">Đã có cọc</option>
+              <option value="sold"     data-i18n="status.sold">Đã bán</option>
+              <option value="repair"   data-i18n="status.repair">Đang sửa chữa</option>
+              <option value="renting"  data-i18n="status.renting">Đang cho thuê</option>
+            </select>
+            <small class="field__hint" data-i18n="form.status_hint">Nếu chọn → card sẽ hiện huy hiệu tương ứng và ẩn nút sao (yêu thích).</small>
+          </div>
+
+          <div class="field">
+            <label data-i18n="form.price">Giá</label>
+            <input name="price" type="text" required
+                   data-i18n-ph="form.price_ph"
+                   placeholder="VD: 9.8 tỷ hoặc 9800000000" />
+            <small class="field__error"></small>
+          </div>
+
+          <div class="field">
+            <label data-i18n="form.area_sqm">Diện tích (m²)</label>
+            <input name="areaSqm" type="number" min="1" step="0.1"
+                   data-i18n-ph="form.area_sqm_ph" placeholder="VD: 80" />
+            <small class="field__error"></small>
+          </div>
+
+          <div class="field">
+            <label data-i18n="form.bedrooms">Phòng ngủ</label>
+            <input name="bedrooms" type="number" min="0" max="50" placeholder="3" />
+            <small class="field__error"></small>
+          </div>
+
+          <div class="field">
+            <label data-i18n="form.bathrooms">Phòng tắm</label>
+            <input name="bathrooms" type="number" min="0" max="50" placeholder="2" />
+            <small class="field__error"></small>
+          </div>
+
+          <div class="field field--full">
+            <label data-i18n="form.images">Ảnh (dòng đầu là ảnh bìa — dán URL hoặc bấm chọn ảnh từ máy)</label>
+
+            <div class="image-picker">
+              <!-- Không dùng `hidden` vì iOS Safari đôi khi bỏ qua .click() trên input hidden.
+                   Dùng CSS visually-hidden để input vẫn trigger được file dialog. -->
+              <input id="image-file" type="file" accept="image/*" multiple class="visually-hidden" />
+              <button type="button" id="btn-pick-images" class="btn btn--ghost btn--sm">
+                <span class="btn__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <path d="m21 15-5-5L5 21"/>
+                  </svg>
+                </span>
+                <span data-i18n="form.pick_images">Pick images</span>
+              </button>
+              <button type="button" id="btn-clear-images" class="btn btn--ghost btn--sm" style="color:#c1121f">
+                <span class="btn__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6"/>
+                  </svg>
+                </span>
+                <span data-i18n="form.clear_images">Clear all</span>
+              </button>
+              <span id="image-picker-status" class="image-picker__status" aria-live="polite"></span>
+            </div>
+
+            <textarea name="images" rows="4"
+                      data-i18n-ph="form.images_ph"
+                      placeholder="https://...&#10;https://...&#10;hoặc bấm nút bên trên để chọn ảnh"></textarea>
+            <small class="field__hint" data-i18n="form.images_hint">Ảnh được nén tự động (tối ưu xuống ~85KB mỗi ảnh, kể cả ảnh 8K). Tối đa 10 ảnh / tin.</small>
+            <small class="field__error"></small>
+          </div>
+
+          <div class="field field--full">
+            <label data-i18n="form.description">Mô tả</label>
+            <textarea name="description" rows="4" maxlength="2000"
+                      data-i18n-ph="form.description_ph"
+                      placeholder="Mô tả chi tiết về bất động sản..."></textarea>
+            <small class="field__error"></small>
+          </div>
+
+          <!-- Bản dịch đa ngôn ngữ (tuỳ chọn) — giúp khách Tây / Đài Loan đọc được tin đăng -->
+          <div class="field field--full">
+            <details class="i18n-group">
+              <summary>
+                <span class="i18n-group__title" data-i18n="form.i18n_group_title">🌐 Bản dịch cho khách nước ngoài (EN / 中文)</span>
+                <span class="i18n-group__hint" data-i18n="form.i18n_hint">Nhập bản dịch EN/中文 để khách nước ngoài đọc được tin đăng. Để trống sẽ tự hiện bản tiếng Việt.</span>
+              </summary>
+
+              <div class="i18n-group__body">
+                <div class="i18n-group__auto">
+                  <button id="btn-auto-translate" type="button" class="btn btn--ghost btn--sm">
+                    <span data-i18n="form.auto_translate">Tự động dịch VI → EN + 中</span>
+                  </button>
+                  <span id="auto-translate-status" class="form__hint"></span>
+                </div>
+                <div class="field">
+                  <label data-i18n="form.title_en">Title (English)</label>
+                  <input name="title_en" type="text" maxlength="160"
+                         data-i18n-ph="form.title_en_ph"
+                         placeholder="e.g., 2-story townhouse, Binh Hung" />
+                  <small class="field__error"></small>
+                </div>
+                <div class="field">
+                  <label data-i18n="form.title_zh">標題 (中文)</label>
+                  <input name="title_zh" type="text" maxlength="160"
+                         data-i18n-ph="form.title_zh_ph"
+                         placeholder="例如:Binh Hung 兩層樓連排屋" />
+                  <small class="field__error"></small>
+                </div>
+                <div class="field field--full">
+                  <label data-i18n="form.description_en">Description (English)</label>
+                  <textarea name="description_en" rows="4" maxlength="2200"
+                            data-i18n-ph="form.description_en_ph"
+                            placeholder="Detailed description in English for Western clients..."></textarea>
+                  <small class="field__error"></small>
+                </div>
+                <div class="field field--full">
+                  <label data-i18n="form.description_zh">描述 (中文)</label>
+                  <textarea name="description_zh" rows="4" maxlength="2200"
+                            data-i18n-ph="form.description_zh_ph"
+                            placeholder="中文詳細描述,方便台灣/華語客戶閱讀..."></textarea>
+                  <small class="field__error"></small>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <div class="form__footer">
+          <button id="listing-modal-cancel" type="button" class="btn btn--ghost" data-i18n="form.cancel">Huỷ</button>
+          <button id="listing-modal-submit" type="submit" class="btn btn--primary" data-i18n="form.submit_add">Đăng tin</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ MODAL: Chi tiết tin (kiểu Facebook post) ══════════════════════ -->
+  <div id="detail-modal" class="modal modal--detail" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title" aria-hidden="true">
+    <div class="modal__panel modal__panel--detail" role="document">
+      <div class="modal__head">
+        <h2 id="detail-modal-title" class="modal__title">Chi tiết tin đăng</h2>
+        <button id="detail-modal-close" class="icon-btn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div id="detail-modal-body" class="detail"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ MODAL: Admin login ══════════════════════ -->
+  <div id="login-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title" aria-hidden="true">
+    <div class="modal__panel modal__panel--sm" role="document">
+      <div class="modal__head">
+        <h2 id="login-modal-title" class="modal__title" data-i18n="login.title">Đăng nhập admin</h2>
+        <button id="login-modal-close" class="icon-btn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <form id="login-form" class="form" novalidate>
+        <div class="field field--full">
+          <label data-i18n="login.email">Email</label>
+          <input name="email" type="email" required autocomplete="username"
+                 placeholder="admin@hoangsam.bds" />
+          <small class="field__error"></small>
+        </div>
+
+        <div class="field field--full">
+          <label data-i18n="login.password">Mật khẩu</label>
+          <input name="password" type="password" required autocomplete="current-password"
+                 placeholder="••••••••" />
+          <small class="field__error"></small>
+        </div>
+
+        <div class="form__footer">
+          <button type="submit" class="btn btn--primary btn--full" data-i18n="login.submit">Đăng nhập</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Preview modal — hiển thị ảnh sau khi nén, cho admin xem & xoá từng ảnh trước khi Apply -->
+  <div id="preview-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="preview-modal-title" aria-hidden="true">
+    <div class="modal__dialog" style="max-width:720px">
+      <header class="modal__header">
+        <h2 id="preview-modal-title" class="modal__title" data-i18n="preview.title">Review images before applying</h2>
+        <button type="button" id="preview-close" class="modal__close" aria-label="Close">&times;</button>
+      </header>
+      <div class="modal__body">
+        <p id="preview-summary" class="muted" style="margin:0 0 12px 0;font-size:14px"></p>
+        <div id="preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px,1fr));gap:10px"></div>
+      </div>
+      <div class="modal__footer" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;padding:12px 18px 18px">
+        <button type="button" id="preview-cancel" class="btn btn--ghost" data-i18n="preview.cancel">Cancel (keep old)</button>
+        <button type="button" id="preview-apply" class="btn btn--primary" data-i18n="preview.apply">Apply these images</button>
+      </div>
+    </div>
+  </div>
+  <!-- ══════════════════════ APPOINTMENT MODAL ══════════════════════ -->
+  <div id="apt-modal" class="ai-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="ai-modal__panel" role="document" style="max-width:520px;">
+      <header class="ai-modal__head">
+        <div class="ai-modal__title">
+          <span class="ai-modal__emoji" aria-hidden="true"></span>
+          <div>
+            <h2 class="ai-modal__name" data-i18n="apt.title">Đặt lịch xem nhà</h2>
+            <p class="ai-modal__role" data-i18n="apt.subtitle">Marshall Ng sẽ xác nhận qua Zalo trong 15 phút</p>
+          </div>
+        </div>
+        <button id="apt-close" class="icon-btn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </header>
+
+      <div class="apt-form">
+        <!-- Honeypot: ẩn với user thật, bot điền vào bị reject -->
+        <input id="apt-hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true"
+               class="hp-trap" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;" />
+
+        <label class="apt-field">
+          <span data-i18n="apt.name">Họ và tên *</span>
+          <input id="apt-name" type="text" required autocomplete="name" placeholder="VD: Nguyễn Văn A" />
+        </label>
+
+        <label class="apt-field">
+          <span data-i18n="apt.phone">Số điện thoại *</span>
+          <input id="apt-phone" type="tel" required autocomplete="tel" placeholder="VD: 0909xxxxxx" inputmode="tel" />
+        </label>
+
+        <div class="apt-row">
+          <label class="apt-field">
+            <span data-i18n="apt.date">Ngày xem *</span>
+            <input id="apt-date" type="date" required />
+          </label>
+
+          <label class="apt-field">
+            <span data-i18n="apt.time">Giờ xem *</span>
+            <select id="apt-time" required>
+              <option value="08:00">08:00</option>
+              <option value="09:00">09:00</option>
+              <option value="10:00" selected>10:00</option>
+              <option value="11:00">11:00</option>
+              <option value="14:00">14:00</option>
+              <option value="15:00">15:00</option>
+              <option value="16:00">16:00</option>
+              <option value="17:00">17:00</option>
+              <option value="18:00">18:00</option>
+              <option value="19:00">19:00</option>
+              <option value="20:00">20:00</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="apt-field">
+          <span data-i18n="apt.listing">Tin đăng muốn xem (tuỳ chọn)</span>
+          <select id="apt-listing">
+            <option value="">-- Tuỳ ý (chưa chọn cụ thể) --</option>
+          </select>
+        </label>
+
+        <label class="apt-field">
+          <span data-i18n="apt.note">Ghi chú (nếu có)</span>
+          <textarea id="apt-note" rows="2" placeholder="VD: Thích nhà hướng Đông Nam, ngân sách 8-10 tỷ..."></textarea>
+        </label>
+
+        <p id="apt-status" class="apt-status" aria-live="polite"></p>
+
+        <div class="apt-actions">
+          <button id="apt-cancel" type="button" class="btn btn--ghost" data-i18n="apt.cancel">Huỷ</button>
+          <button id="apt-submit" type="button" class="btn btn--primary" data-i18n="apt.submit">Xác nhận &amp; gửi Zalo</button>
+        </div>
+
+        <p class="apt-hint" data-i18n="apt.hint">Thông tin sẽ được copy sẵn — mở Zalo Marshall Ng và Ctrl+V để gửi.</p>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Scripts -->
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
