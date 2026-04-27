@@ -22,7 +22,7 @@ const ADMIN_ZALO_URL = `https://zalo.me/${ADMIN_ZALO}`;
 
 // ── Email API (Google Apps Script) ──────────────────────────────────────────
 // Sau khi deploy gas/email-api.gs, paste URL vào đây:
-const EMAIL_API_URL = 'https://script.google.com/macros/s/PASTE_YOUR_DEPLOYMENT_URL_HERE/exec';
+const EMAIL_API_URL = 'https://script.google.com/macros/s/AKfycby_hUxdfdeLqFFE5ToOxWSz-JngTaMrWK2KedssOdXzsC1oiy6wHdrK6wMZuCduu5v-/exec';
 
 async function sendEmailNotification(payload) {
   if (!EMAIL_API_URL.includes('PASTE_YOUR')) {
