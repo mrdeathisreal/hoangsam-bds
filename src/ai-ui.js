@@ -402,14 +402,16 @@ async function handleRun() {
 
   out.textContent = '⏳ Đang kết nối tư vấn viên AI...';
   try {
-    // GAS POST gặp CORS redirect → dùng GET với URLSearchParams
-    const params = new URLSearchParams({
-      type: 'chat',
-      systemPrompt,
-      userPrompt,
-      listings: listingsCtx,
+    // POST với text/plain → GAS support CORS (simple request, no preflight)
+    const resp = await fetch(EMAIL_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'chat',
+        systemPrompt,
+        userPrompt,
+        listings: listingsCtx,
+      }),
     });
-    const resp = await fetch(EMAIL_API_URL + '?' + params.toString());
     const data = await resp.json();
     if (data.ok && data.text) {
       out.textContent = data.text;
