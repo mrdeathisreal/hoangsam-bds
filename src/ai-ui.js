@@ -116,6 +116,38 @@ function _fmtDMY(d) {
 
 let currentAgent = null;
 let currentAbort = null;
+let chatHistory = []; // [{role:'user'|'model', text:'...'}]
+
+function renderChatHistory() {
+  const out = $('ai-output');
+  if (!out) return;
+  if (!chatHistory.length) {
+    out.innerHTML = '';
+    out.classList.add('ai-output--empty');
+    return;
+  }
+  out.classList.remove('ai-output--empty');
+  out.innerHTML = chatHistory.map(m => {
+    const isUser = m.role === 'user';
+    const align = isUser ? 'flex-end' : 'flex-start';
+    const bg = isUser ? '#0f766e' : '#f1f5f9';
+    const fg = isUser ? '#fff' : '#0f172a';
+    const radius = isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px';
+    const safeText = String(m.text || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+    return `<div style="display:flex;justify-content:${align};margin-bottom:8px">
+      <div style="max-width:85%;padding:10px 14px;border-radius:${radius};background:${bg};color:${fg};font-size:14px;line-height:1.5;white-space:normal;word-wrap:break-word">${safeText}</div>
+    </div>`;
+  }).join('');
+  out.scrollTop = out.scrollHeight;
+}
+
+function resetChatHistory() {
+  chatHistory = [];
+  renderChatHistory();
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -221,6 +253,7 @@ function wireAgentTriggers() {
 
 function wireAgentModal() {
   $('ai-modal-close')?.addEventListener('click', closeAgentModal);
+  $('ai-new-chat-btn')?.addEventListener('click', resetChatHistory);
   $('ai-modal')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeAgentModal();
   });
@@ -316,13 +349,12 @@ function openAgentModal(agentId) {
   // Nút đặt lịch chỉ hiện khi đang ở agent chat
   $('ai-book-from-chat').hidden = agentId !== 'chat';
 
-  // Reset input/output
+  // Reset input/output + chat history
   $('ai-input').value = '';
   $('ai-input').placeholder = agent.exampleInput || 'Nhập nội dung...';
-  $('ai-output').textContent = '';
-  $('ai-output').classList.add('ai-output--empty');
+  resetChatHistory();
   $('ai-output').setAttribute('data-placeholder',
-    agentId === 'chat' ? 'Phản hồi sẽ hiện ở đây.' : 'Nội dung đã biên tập sẽ hiện ở đây.');
+    agentId === 'chat' ? 'Cuộc trò chuyện sẽ hiện ở đây.' : 'Nội dung đã biên tập sẽ hiện ở đây.');
 
   setRunningState(false);
 
@@ -344,6 +376,7 @@ function closeAgentModal() {
   $('ai-modal')?.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
   currentAgent = null;
+  resetChatHistory();
 }
 
 async function handleRun() {
@@ -355,9 +388,10 @@ async function handleRun() {
   const check = isContentAllowed(userPrompt);
   if (!check.ok) {
     const lang = getLang();
-    const out = $('ai-output');
-    out.textContent = getBlockedMessage(lang);
-    out.classList.remove('ai-output--empty');
+    chatHistory.push({ role: 'user', text: userPrompt });
+    chatHistory.push({ role: 'model', text: getBlockedMessage(lang) });
+    renderChatHistory();
+    $('ai-input').value = '';
     setRunningState(false);
     return;
   }
@@ -376,51 +410,68 @@ async function handleRun() {
   const listingsCtx = currentAgent.id === 'chat' ? formatListingsForContext() : '';
   if (listingsCtx) systemPrompt += '\n\n=== TIN ĐĂNG HIỆN CÓ ===\n' + listingsCtx;
 
-  const out = $('ai-output');
-  out.textContent = '';
-  out.classList.remove('ai-output--empty');
+  // Push user message to history, clear input, render
+  chatHistory.push({ role: 'user', text: userPrompt });
+  $('ai-input').value = '';
+  // Show typing indicator as a temporary AI bubble
+  chatHistory.push({ role: 'model', text: '⏳ ...' });
+  renderChatHistory();
   setRunningState(true);
 
   // --- Nếu có local Gemini key → stream trực tiếp (admin/CTV) ---
   if (hasApiKey()) {
     currentAbort = new AbortController();
+    let acc = '';
     try {
       await streamPrompt({
         systemPrompt, userPrompt,
         signal: currentAbort.signal,
-        onChunk: (delta) => { out.textContent += delta; out.scrollTop = out.scrollHeight; },
+        onChunk: (delta) => {
+          acc += delta;
+          chatHistory[chatHistory.length - 1] = { role: 'model', text: acc };
+          renderChatHistory();
+        },
       });
     } catch (err) {
-      if (err.name === 'AbortError') out.textContent += '\n\n[Đã dừng]';
-      else out.textContent = isAdmin() ? describeError(err, uiLang) : 'Lỗi kết nối. Vui lòng thử lại.';
+      const msg = err.name === 'AbortError'
+        ? acc + '\n\n[Đã dừng]'
+        : (isAdmin() ? describeError(err, uiLang) : 'Lỗi kết nối. Vui lòng thử lại.');
+      chatHistory[chatHistory.length - 1] = { role: 'model', text: msg };
+      renderChatHistory();
     } finally { currentAbort = null; setRunningState(false); }
     return;
   }
 
   // --- Không có key → gọi GAS proxy (tất cả khách) ---
-  if (isAdmin()) { openKeyDialog(); setRunningState(false); return; }
+  if (isAdmin()) {
+    chatHistory.pop(); // remove typing indicator
+    renderChatHistory();
+    openKeyDialog();
+    setRunningState(false);
+    return;
+  }
 
-  out.textContent = '⏳ Đang kết nối tư vấn viên AI...';
   try {
-    // POST với text/plain → GAS support CORS (simple request, no preflight)
+    // Build history array for multi-turn (last 10 turns excluding pending typing indicator)
+    const recentHistory = chatHistory.slice(0, -1).slice(-10);
     const resp = await fetch(EMAIL_API_URL, {
       method: 'POST',
       body: JSON.stringify({
         type: 'chat',
         systemPrompt,
-        userPrompt,
+        history: recentHistory,
         listings: listingsCtx,
       }),
     });
     const data = await resp.json();
-    if (data.ok && data.text) {
-      out.textContent = data.text;
-    } else {
-      out.textContent = 'Tư vấn viên tạm thời bận. Vui lòng đặt lịch để được hỗ trợ trực tiếp.';
-    }
+    const aiText = (data.ok && data.text)
+      ? data.text
+      : 'Tư vấn viên tạm thời bận. Vui lòng đặt lịch để được hỗ trợ trực tiếp.';
+    chatHistory[chatHistory.length - 1] = { role: 'model', text: aiText };
   } catch (err) {
-    out.textContent = 'Không kết nối được. Vui lòng thử lại sau.';
+    chatHistory[chatHistory.length - 1] = { role: 'model', text: 'Không kết nối được. Vui lòng thử lại sau.' };
   } finally {
+    renderChatHistory();
     setRunningState(false);
   }
 }

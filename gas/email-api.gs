@@ -44,16 +44,27 @@ function handleChat(d) {
   const systemPrompt = d.systemPrompt || 'Ban la tu van vien bat dong san chuyen nghiep cua HoangSam BDS tai TP.HCM. Tra loi ngan gon, chinh xac, than thien.';
   const userPrompt   = d.userPrompt   || '';
   const listings     = d.listings     || '';
+  const history      = Array.isArray(d.history) ? d.history : null;
 
   const fullSystem = systemPrompt +
     (listings ? '\n\n=== TIN DANG HIEN CO ===\n' + listings : '');
+
+  // Build contents: prefer history (multi-turn) → fallback userPrompt (single-turn)
+  let contents;
+  if (history && history.length) {
+    contents = history.map(function(m) {
+      return { role: m.role === 'model' ? 'model' : 'user', parts: [{ text: String(m.text || '') }] };
+    });
+  } else {
+    contents = [{ role: 'user', parts: [{ text: userPrompt }] }];
+  }
 
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
               GEMINI_MODEL + ':generateContent?key=' + key;
 
   const payload = {
     systemInstruction: { parts: [{ text: fullSystem }] },
-    contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+    contents: contents,
     generationConfig: {
       temperature: 0.75,
       maxOutputTokens: 1024,

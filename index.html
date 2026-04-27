@@ -279,23 +279,23 @@
         <div id="ai-templates" class="ai-templates"></div>
       </section>
 
-      <!-- ── AI chat (admin/CTV with Gemini key) ── -->
+      <!-- ── Chat history (bubbles) — hiện đầu tiên, scroll được ── -->
+      <section id="ai-chat-output-section" class="ai-section">
+        <div class="ai-output-head">
+          <h3 class="ai-section__title" data-i18n="ai.output_title">Cuộc trò chuyện</h3>
+          <button id="ai-new-chat-btn" type="button" class="btn btn--ghost btn--sm" title="Cuộc trò chuyện mới">↻ Mới</button>
+        </div>
+        <div id="ai-output" class="ai-output ai-output--empty" data-placeholder="Cuộc trò chuyện sẽ hiện ở đây..." style="min-height:200px;max-height:380px;overflow-y:auto;padding:12px;background:#fafafa;border-radius:8px"></div>
+      </section>
+      <!-- ── Input box ── -->
       <section id="ai-chat-section" class="ai-section">
-        <h3 class="ai-section__title" data-i18n="ai.input_title">Yêu cầu của bạn</h3>
-        <textarea id="ai-input" class="ai-input" rows="4"
-                  placeholder="Nhập yêu cầu của bạn..."></textarea>
+        <textarea id="ai-input" class="ai-input" rows="3"
+                  placeholder="Nhập câu hỏi của bạn..."></textarea>
         <div class="ai-actions">
           <button id="ai-run-btn" type="button" class="btn btn--primary" data-i18n="ai.run">Gửi</button>
           <button id="ai-stop-btn" type="button" class="btn btn--ghost" hidden data-i18n="ai.stop">Dừng</button>
           <button id="ai-book-from-chat" type="button" class="btn" style="background:#f59e0b;color:#fff;margin-left:auto" hidden data-i18n="ai.book_from_chat">Đặt lịch xem nhà</button>
         </div>
-      </section>
-      <section id="ai-chat-output-section" class="ai-section">
-        <div class="ai-output-head">
-          <h3 class="ai-section__title" data-i18n="ai.output_title">Phản hồi</h3>
-          <button id="ai-copy-btn" type="button" class="btn btn--ghost btn--sm" data-i18n="ai.copy">Copy</button>
-        </div>
-        <pre id="ai-output" class="ai-output ai-output--empty" data-placeholder="Phản hồi sẽ hiện ở đây..."></pre>
       </section>
 
       <!-- ── Inquiry form (guest, no Gemini key) ── -->
