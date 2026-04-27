@@ -10,7 +10,7 @@
 
 const ADMIN_EMAIL = 'nhhuy130@gmail.com';
 const SITE_NAME   = 'HoangSam BDS';
-const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
 /* ─── Router ─── */
 function doPost(e) {
