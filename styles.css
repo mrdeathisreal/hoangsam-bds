@@ -1751,13 +1751,18 @@ a { color: inherit; text-decoration: none; }
 .ai-output {
   margin: 0;
   padding: 14px;
-  min-height: 200px; max-height: 380px; overflow-y: auto;
-  background: var(--surface-alt);
-  border: 1px solid var(--border); border-radius: 10px;
+  min-height: 220px; max-height: 420px; overflow-y: auto;
+  background: linear-gradient(180deg, #fafbfc 0%, #f5f7fa 100%);
+  border: 1px solid var(--border); border-radius: 12px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: var(--fs-sm); line-height: 1.5;
   color: var(--ink);
   word-wrap: break-word;
+  scroll-behavior: smooth;
+}
+@keyframes hsBubbleIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .ai-output--empty::before {
   content: attr(data-placeholder);

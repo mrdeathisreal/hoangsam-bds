@@ -127,21 +127,38 @@ function renderChatHistory() {
     return;
   }
   out.classList.remove('ai-output--empty');
-  out.innerHTML = chatHistory.map(m => {
+  out.innerHTML = chatHistory.map((m, i) => {
     const isUser = m.role === 'user';
     const align = isUser ? 'flex-end' : 'flex-start';
-    const bg = isUser ? '#0f766e' : '#f1f5f9';
+    const bg = isUser ? 'linear-gradient(135deg,#0f766e,#0ea5e9)' : '#f1f5f9';
     const fg = isUser ? '#fff' : '#0f172a';
-    const radius = isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px';
+    const radius = isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px';
+    const avatarHtml = isUser
+      ? `<div style="width:30px;height:30px;border-radius:50%;background:#0ea5e9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0">B</div>`
+      : `<div style="width:30px;height:30px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🏠</div>`;
     const safeText = String(m.text || '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/\n/g, '<br>');
-    return `<div style="display:flex;justify-content:${align};margin-bottom:8px">
-      <div style="max-width:85%;padding:10px 14px;border-radius:${radius};background:${bg};color:${fg};font-size:14px;line-height:1.5;white-space:normal;word-wrap:break-word">${safeText}</div>
-    </div>`;
+    const bubbleStyle = `max-width:78%;padding:10px 14px;border-radius:${radius};background:${bg};color:${fg};font-size:14px;line-height:1.5;white-space:normal;word-wrap:break-word;box-shadow:0 1px 2px rgba(0,0,0,0.06)`;
+    const containerStyle = `display:flex;justify-content:${align};margin-bottom:10px;gap:8px;align-items:flex-end;animation:hsBubbleIn 0.25s ease-out`;
+    if (isUser) {
+      return `<div style="${containerStyle}">
+        <div style="${bubbleStyle}">${safeText}</div>
+        ${avatarHtml}
+      </div>`;
+    } else {
+      return `<div style="${containerStyle}">
+        ${avatarHtml}
+        <div style="${bubbleStyle}">${safeText}</div>
+      </div>`;
+    }
   }).join('');
-  out.scrollTop = out.scrollHeight;
+  // Smooth scroll to bottom
+  requestAnimationFrame(() => {
+    out.scrollTo({ top: out.scrollHeight, behavior: 'smooth' });
+  });
 }
 
 function resetChatHistory() {
