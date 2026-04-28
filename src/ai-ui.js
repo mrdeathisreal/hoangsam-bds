@@ -442,15 +442,7 @@ async function handleRun() {
     return;
   }
 
-  // --- Không có key → gọi GAS proxy (tất cả khách) ---
-  if (isAdmin()) {
-    chatHistory.pop(); // remove typing indicator
-    renderChatHistory();
-    openKeyDialog();
-    setRunningState(false);
-    return;
-  }
-
+  // --- Không có key → gọi GAS proxy (cho tất cả: guest + admin chưa set key) ---
   try {
     // Build history array for multi-turn (last 10 turns excluding pending typing indicator)
     const recentHistory = chatHistory.slice(0, -1).slice(-10);
