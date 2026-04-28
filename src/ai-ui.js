@@ -400,14 +400,29 @@ async function handleRun() {
   const LANG_NAMES = { vi: 'Vietnamese', en: 'English', zh: 'Traditional Chinese (繁體中文)' };
   systemPrompt += `\n\n=== OUTPUT LANGUAGE (STRICT) ===\nRespond in ${LANG_NAMES[uiLang] || 'Vietnamese'} regardless of the user's input language.`;
 
-  // Agent chat: inject listings + ép buộc dùng listings khi trả lời
+  // Agent chat: inject listings (chỉ là dữ liệu tham khảo — KHÔNG ép phải list mỗi lượt)
   const listingsCtx = currentAgent.id === 'chat' ? formatListingsForContext() : '';
   if (listingsCtx) {
-    systemPrompt += '\n\n=== TIN ĐĂNG HIỆN CÓ (BẮT BUỘC dùng dữ liệu này khi khách hỏi về nhà cụ thể) ===\n' + listingsCtx +
-      '\n\n=== QUY TẮC TRẢ LỜI ===\n' +
-      '- Khi khách hỏi "có nhà nào ở [khu vực]" → tra cứu trong TIN ĐĂNG HIỆN CÓ ở trên, liệt kê tên + giá + DT của các căn match.\n' +
-      '- Nếu không có tin nào match khu vực khách hỏi → nói thẳng "Hiện chưa có tin ở [khu vực] đó, em có [list các khu khác có sẵn]".\n' +
-      '- TUYỆT ĐỐI không bịa nhà, không nói chung chung kiểu "TP.HCM có nhiều khu...". Chỉ dùng đúng dữ liệu trong TIN ĐĂNG HIỆN CÓ.';
+    systemPrompt += '\n\n=== TIN ĐĂNG HIỆN CÓ (CHỈ tham chiếu khi khách hỏi về nhà ở khu vực cụ thể) ===\n' + listingsCtx +
+      '\n\n=== CÁCH XỬ LÝ THEO LOẠI CÂU HỎI ===\n' +
+      'A. Khách hỏi "có nhà ở [khu vực]?" hoặc "căn nào ở [khu vực]?":\n' +
+      '   → Tra cứu TIN ĐĂNG HIỆN CÓ. Liệt kê CHÍNH XÁC tên + giá + DT các căn match khu vực đó.\n' +
+      '   → Nếu không match khu vực khách hỏi: nói "Hiện chưa có tin ở [đúng tên khu vực khách hỏi]" rồi GỢI Ý 1-2 căn ở khu khác (chỉ làm 1 lần đầu, không lặp lại lượt sau).\n' +
+      '\n' +
+      'B. Khách hỏi follow-up về căn vừa nhắc (vd: "diện tích thế nào?", "căn đó pháp lý ra sao?", "giá thương lượng được không?"):\n' +
+      '   → Trả lời CHI TIẾT về đúng căn đó dựa trên data trong TIN ĐĂNG. KHÔNG đổi chủ đề, KHÔNG list lại các căn khác.\n' +
+      '\n' +
+      'C. Khách hỏi câu hỏi CHUNG (vay ngân hàng / thủ tục / pháp lý / phong thuỷ / quy hoạch / sang tên / công chứng / nhà hình thành tương lai / hợp đồng / thuế / nhà người nước ngoài...):\n' +
+      '   → Trả lời theo PHẠM VI TƯ VẤN ở trên, dùng kiến thức BĐS chung. KHÔNG quay về list nhà.\n' +
+      '   → Vd: "vay ngân hàng thế nào" → giải thích LTV 70-80%, lãi suất tham khảo 7-10%, hồ sơ cần (CCCD, sao kê 6-12 tháng, hợp đồng lao động), khuyên liên hệ ngân hàng cụ thể để chính xác.\n' +
+      '\n' +
+      'D. Khách hỏi câu hỏi tiếp theo trong cùng cuộc trò chuyện:\n' +
+      '   → Đọc lịch sử chat, hiểu context, trả lời ĐÚNG câu khách vừa hỏi. KHÔNG copy paste template lượt trước.\n' +
+      '\n' +
+      'TUYỆT ĐỐI:\n' +
+      '- Không bịa khu vực khách chưa hỏi (vd: khách hỏi Thủ Đức, đừng tự nhắc Quận 7).\n' +
+      '- Không bịa nhà không có trong TIN ĐĂNG.\n' +
+      '- Không lặp lại danh sách nhà cùng nội dung mỗi lượt — gây phiền khách.';
   }
 
   // Push user message to history, clear input, render
