@@ -69,6 +69,7 @@ function handleChat(d) {
       temperature: 0.75,
       maxOutputTokens: 2048,
       topP: 0.95,
+      thinkingConfig: { thinkingBudget: 0 }, // Tắt thinking để response nhanh + có text
     },
     safetySettings: [
       { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_ONLY_HIGH' },
@@ -92,8 +93,24 @@ function handleChat(d) {
       return errResponse('Gemini error: ' + result.error.message);
     }
 
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    return json({ ok: true, text });
+    // Extract text from candidates — gemini-2.5 thinking mode returns parts[0]=thought, parts[1+]=text
+    let text = '';
+    const parts = result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts;
+    if (parts && parts.length) {
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i].text && !parts[i].thought) {
+          text += parts[i].text;
+        }
+      }
+    }
+    // Fallback: nếu vẫn rỗng do safety filter
+    if (!text) {
+      const finishReason = result.candidates && result.candidates[0] && result.candidates[0].finishReason;
+      if (finishReason === 'SAFETY') text = 'Em không thể trả lời câu hỏi này, anh/chị có thể hỏi câu khác về BĐS được không ạ?';
+      else if (finishReason === 'MAX_TOKENS') text = 'Em đang viết hơi dài, anh/chị bấm Gửi lần nữa hoặc hỏi cụ thể hơn nha.';
+      else text = 'Em chưa nắm được câu hỏi, anh/chị có thể hỏi rõ hơn về nhà/khu vực/giá/pháp lý/vay được không ạ?';
+    }
+    return json({ ok: true, text: text });
 
   } catch (err) {
     return errResponse('Fetch failed: ' + err.message);
