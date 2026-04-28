@@ -400,9 +400,15 @@ async function handleRun() {
   const LANG_NAMES = { vi: 'Vietnamese', en: 'English', zh: 'Traditional Chinese (繁體中文)' };
   systemPrompt += `\n\n=== OUTPUT LANGUAGE (STRICT) ===\nRespond in ${LANG_NAMES[uiLang] || 'Vietnamese'} regardless of the user's input language.`;
 
-  // Agent chat: inject listings
+  // Agent chat: inject listings + ép buộc dùng listings khi trả lời
   const listingsCtx = currentAgent.id === 'chat' ? formatListingsForContext() : '';
-  if (listingsCtx) systemPrompt += '\n\n=== TIN ĐĂNG HIỆN CÓ ===\n' + listingsCtx;
+  if (listingsCtx) {
+    systemPrompt += '\n\n=== TIN ĐĂNG HIỆN CÓ (BẮT BUỘC dùng dữ liệu này khi khách hỏi về nhà cụ thể) ===\n' + listingsCtx +
+      '\n\n=== QUY TẮC TRẢ LỜI ===\n' +
+      '- Khi khách hỏi "có nhà nào ở [khu vực]" → tra cứu trong TIN ĐĂNG HIỆN CÓ ở trên, liệt kê tên + giá + DT của các căn match.\n' +
+      '- Nếu không có tin nào match khu vực khách hỏi → nói thẳng "Hiện chưa có tin ở [khu vực] đó, em có [list các khu khác có sẵn]".\n' +
+      '- TUYỆT ĐỐI không bịa nhà, không nói chung chung kiểu "TP.HCM có nhiều khu...". Chỉ dùng đúng dữ liệu trong TIN ĐĂNG HIỆN CÓ.';
+  }
 
   // Push user message to history, clear input, render
   chatHistory.push({ role: 'user', text: userPrompt });
