@@ -7,7 +7,41 @@ on:
   workflow_dispatch:
 
 jobs:
+  validate:
+    name: Pre-deploy validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate HTML/JS basics
+        run: |
+          # Check for empty script src
+          if grep -q '<script[^>]*src=""' index.html; then
+            echo "::error::Empty script src in index.html"
+            exit 1
+          fi
+          # Verify EMAIL_API_URL is configured
+          if ! grep -q 'AKfycb' src/ai-ui.js; then
+            echo "::error::EMAIL_API_URL not configured in ai-ui.js"
+            exit 1
+          fi
+          # Verify Firebase config exists
+          if ! grep -q 'apiKey' src/firebase-config.js 2>/dev/null && ! grep -q 'apiKey' app.js; then
+            echo "::warning::Firebase config may be missing"
+          fi
+          echo "✅ Basic validation passed"
+
+      - name: Check no console.log in production code
+        continue-on-error: true
+        run: |
+          count=$(grep -rn "console\.log" src/ app.js 2>/dev/null | wc -l)
+          if [ "$count" -gt 20 ]; then
+            echo "::warning::Found $count console.log statements (consider removing)"
+          fi
+
   deploy:
+    name: Deploy to Firebase
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,3 +52,49 @@ jobs:
       - run: firebase deploy --only hosting --token "$FIREBASE_TOKEN" --project hoangsam-bds
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+  health-check:
+    name: Post-deploy health check
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Firebase CDN propagation
+        run: sleep 15
+
+      - name: Smoke test homepage
+        run: |
+          response=$(curl -sL -w "\n%{http_code}" https://hoangsam-bds.web.app/)
+          status=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          if [ "$status" != "200" ]; then
+            echo "::error::Homepage returned HTTP $status"
+            exit 1
+          fi
+          if ! echo "$body" | grep -qi "hoang"; then
+            echo "::error::Homepage missing expected content"
+            exit 1
+          fi
+          echo "✅ Homepage healthy ($status)"
+
+      - name: Verify critical assets load
+        run: |
+          for asset in "/app.js" "/src/ai-ui.js" "/styles.css"; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "https://hoangsam-bds.web.app${asset}")
+            if [ "$status" != "200" ]; then
+              echo "::error::Asset ${asset} returned HTTP $status"
+              exit 1
+            fi
+          done
+          echo "✅ All critical assets healthy"
+
+      - name: Ping GAS API endpoint
+        continue-on-error: true
+        run: |
+          response=$(curl -sL -w "\n%{http_code}" --max-time 30 \
+            "https://script.google.com/macros/s/AKfycbw6llesLH4aZArlZShHdWVDzqVRMu24k6CjFgUxnx9YjqSM32HoKulOevE8wbIksDe9/exec")
+          status=$(echo "$response" | tail -n1)
+          if [ "$status" != "200" ]; then
+            echo "::warning::GAS endpoint returned HTTP $status (chat may be down)"
+          else
+            echo "✅ GAS API healthy"
+          fi

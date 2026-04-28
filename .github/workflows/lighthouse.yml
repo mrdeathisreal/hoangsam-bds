@@ -1,0 +1,29 @@
+name: Lighthouse Performance Audit
+
+on:
+  schedule:
+    # Mỗi thứ 2 lúc 9:00 UTC (16:00 VN)
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Lighthouse mobile audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Lighthouse on production URL
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            https://hoangsam-bds.web.app/
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: ./.github/lighthouse-config.json
+        continue-on-error: true
+
+      - name: Comment on commit with results
+        if: always()
+        run: |
+          echo "Lighthouse audit completed. Check artifacts for HTML report."

@@ -1,0 +1,48 @@
+name: Daily GAS API Health Check
+
+on:
+  schedule:
+    # Mỗi ngày 00:00 UTC (07:00 VN)
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Verify Gemini chat works end-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test GAS chat endpoint
+        run: |
+          GAS_URL="https://script.google.com/macros/s/AKfycbw6llesLH4aZArlZShHdWVDzqVRMu24k6CjFgUxnx9YjqSM32HoKulOevE8wbIksDe9/exec"
+
+          # Send a real chat request
+          response=$(curl -sL -w "\n%{http_code}" --max-time 60 \
+            -X POST "$GAS_URL" \
+            -H "Content-Type: text/plain" \
+            -d '{"type":"chat","systemPrompt":"tu van vien BDS","history":[{"role":"user","text":"xin chao"}]}')
+
+          status=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Status: $status"
+          echo "Body (first 500 chars): ${body:0:500}"
+
+          if [ "$status" != "200" ]; then
+            echo "::error::GAS endpoint returned HTTP $status"
+            exit 1
+          fi
+
+          # Check ok:true in response
+          if ! echo "$body" | grep -q '"ok":true'; then
+            error_msg=$(echo "$body" | grep -oE '"error":"[^"]*"' | head -1 || echo "Unknown error")
+            echo "::error::Gemini returned non-OK: $error_msg"
+            exit 1
+          fi
+
+          # Check non-empty text
+          if ! echo "$body" | grep -q '"text":"[^"]'; then
+            echo "::error::Gemini returned empty text (possibly safety filtered)"
+            exit 1
+          fi
+
+          echo "✅ GAS + Gemini chat working end-to-end"
