@@ -337,14 +337,8 @@ function openAgentModal(agentId) {
     });
   }
 
-  // System prompt details: chỉ ADMIN mới thấy (không phải CTV)
-  $('ai-system-details').hidden = !isAdm;
-  if (isAdm) {
-    const sp = agentId === 'chat'
-      ? getSystemPromptForRole('chat', getRole())
-      : agent.systemPrompt;
-    $('ai-system-prompt').textContent = sp;
-  }
+  // System prompt details: ẩn luôn (UI sạch hơn — admin xem source code nếu cần)
+  $('ai-system-details').hidden = true;
 
   // Nút đặt lịch chỉ hiện khi đang ở agent chat
   $('ai-book-from-chat').hidden = agentId !== 'chat';
@@ -358,8 +352,8 @@ function openAgentModal(agentId) {
 
   setRunningState(false);
 
-  // Banner thiếu key: chỉ ADMIN thấy (khách/CTV không cần biết)
-  $('ai-no-key').hidden = hasApiKey() || !isAdm;
+  // Banner thiếu key: ẩn luôn vì GAS proxy đã chạy được cho mọi role
+  $('ai-no-key').hidden = true;
 
   // Luôn hiện AI chat (GAS proxy cho guest, local key cho admin)
   $('ai-chat-section').hidden        = false;
