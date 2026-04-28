@@ -67,7 +67,7 @@ function handleChat(d) {
     contents: contents,
     generationConfig: {
       temperature: 0.75,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 2048,
       topP: 0.95,
     },
     safetySettings: [

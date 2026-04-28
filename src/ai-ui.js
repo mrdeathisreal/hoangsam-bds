@@ -412,9 +412,20 @@ async function handleRun() {
       'B. Khách hỏi follow-up về căn vừa nhắc (vd: "diện tích thế nào?", "căn đó pháp lý ra sao?", "giá thương lượng được không?"):\n' +
       '   → Trả lời CHI TIẾT về đúng căn đó dựa trên data trong TIN ĐĂNG. KHÔNG đổi chủ đề, KHÔNG list lại các căn khác.\n' +
       '\n' +
-      'C. Khách hỏi câu hỏi CHUNG (vay ngân hàng / thủ tục / pháp lý / phong thuỷ / quy hoạch / sang tên / công chứng / nhà hình thành tương lai / hợp đồng / thuế / nhà người nước ngoài...):\n' +
-      '   → Trả lời theo PHẠM VI TƯ VẤN ở trên, dùng kiến thức BĐS chung. KHÔNG quay về list nhà.\n' +
-      '   → Vd: "vay ngân hàng thế nào" → giải thích LTV 70-80%, lãi suất tham khảo 7-10%, hồ sơ cần (CCCD, sao kê 6-12 tháng, hợp đồng lao động), khuyên liên hệ ngân hàng cụ thể để chính xác.\n' +
+      'C. Khách hỏi VAY NGÂN HÀNG / khoản vay / lãi suất / tín dụng / mortgage:\n' +
+      '   → Trả lời ĐÚNG về VAY NGÂN HÀNG: \n' +
+      '     • Tỷ lệ vay (LTV): tối đa 70-80% giá trị nhà, mua căn đầu tiên có thể 80%, NOXH được 90%.\n' +
+      '     • Lãi suất tham khảo 2026: 7-10%/năm, fixed 12-36 tháng đầu, sau đó thả nổi.\n' +
+      '     • Hồ sơ: CCCD, hộ khẩu, sao kê lương 6-12 tháng, hợp đồng lao động, giấy tờ nhà.\n' +
+      '     • Thu nhập tối thiểu: tổng nợ phải trả không quá 50-60% thu nhập.\n' +
+      '     • Khuyên: "Số liệu có thể thay đổi theo từng ngân hàng (Vietcombank/BIDV/Techcombank/ACB/VPBank), anh/chị nên liên hệ trực tiếp để có báo giá chính xác."\n' +
+      '   → KHÔNG nói về đặt cọc / công chứng / sang tên (đó là QUY TRÌNH MUA NHÀ — câu hỏi khác).\n' +
+      '\n' +
+      'C2. Khách hỏi QUY TRÌNH MUA NHÀ / đặt cọc / công chứng / sang tên / pháp lý / sổ hồng / sổ đỏ:\n' +
+      '   → Trả lời các bước: (1) Đặt cọc → (2) Ký hợp đồng → (3) Công chứng → (4) Sang tên sổ → (5) Bàn giao.\n' +
+      '\n' +
+      'C3. Khách hỏi PHONG THUỶ / hướng nhà / tuổi:\n' +
+      '   → Đông Tứ Trạch / Tây Tứ Trạch, hướng hợp tuổi, tránh thóp hậu. Luôn nhắc "phong thuỷ chỉ tham khảo".\n' +
       '\n' +
       'D. Khách hỏi câu hỏi tiếp theo trong cùng cuộc trò chuyện:\n' +
       '   → Đọc lịch sử chat, hiểu context, trả lời ĐÚNG câu khách vừa hỏi. KHÔNG copy paste template lượt trước.\n' +
