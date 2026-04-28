@@ -11,7 +11,7 @@ jobs:
     name: Pre-deploy validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Validate HTML/JS basics
         run: |
@@ -44,10 +44,10 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
       - run: npm install -g firebase-tools
       - run: firebase deploy --only hosting --token "$FIREBASE_TOKEN" --project hoangsam-bds
         env:
