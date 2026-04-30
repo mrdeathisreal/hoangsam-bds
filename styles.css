@@ -3687,3 +3687,146 @@ article.card:hover .card-leaf {
    ════════════════════════════════════════════════════════════════════════ */
 .bigtree { display: none !important; }
 .av-boss, .ambient-vine { display: none !important; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   LEAD CAPTURE POPUP + CINEMATIC FX
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Lead popup ─── */
+.lead-popup {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.lead-popup__overlay {
+  position: absolute; inset: 0;
+  background: rgba(15, 23, 42, 0);
+  backdrop-filter: blur(0px);
+  transition: background 0.35s ease, backdrop-filter 0.35s ease;
+  pointer-events: auto;
+}
+.lead-popup--open .lead-popup__overlay {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+}
+.lead-popup__card {
+  position: relative;
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 28px 24px;
+  max-width: 420px; width: calc(100vw - 32px);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35), 0 4px 12px rgba(15, 23, 42, 0.15);
+  text-align: center;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(40px) scale(0.96);
+  transition: opacity 0.4s ease, transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.lead-popup--open .lead-popup__card {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.lead-popup__close {
+  position: absolute; top: 12px; right: 12px;
+  width: 32px; height: 32px; border-radius: 50%;
+  border: none; background: rgba(15, 23, 42, 0.06);
+  color: #475569;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s ease;
+}
+.lead-popup__close:hover { background: rgba(15, 23, 42, 0.12); }
+.lead-popup__close svg { width: 16px; height: 16px; }
+.lead-popup__badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+  font-size: 12px; font-weight: 600;
+  padding: 6px 12px; border-radius: 999px;
+  margin-bottom: 16px;
+}
+.lead-popup__title {
+  font-size: 22px; font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 12px;
+  line-height: 1.3;
+}
+.lead-popup__desc {
+  font-size: 14px; line-height: 1.6;
+  color: #475569;
+  margin: 0 0 20px;
+}
+.lead-popup__actions {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 16px;
+}
+.lead-popup__btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 15px; font-weight: 600;
+  border: none; cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.lead-popup__btn--primary {
+  background: linear-gradient(135deg, #0068ff, #0ea5e9);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 104, 255, 0.3);
+}
+.lead-popup__btn--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 104, 255, 0.4);
+}
+.lead-popup__btn--ghost {
+  background: transparent;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+.lead-popup__btn--ghost:hover { background: #f8fafc; }
+.lead-popup__phone {
+  font-size: 13px; color: #64748b;
+  margin: 0;
+}
+.lead-popup__phone a {
+  color: #0068ff; font-weight: 600; text-decoration: none;
+}
+.lead-popup__phone a:hover { text-decoration: underline; }
+
+/* ─── Cinematic FX: scroll fade-in ─── */
+.cf-fade-in {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease-out, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: opacity, transform;
+}
+.cf-fade-in--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─── Cinematic FX: Ken Burns zoom ─── */
+@keyframes cfKenBurns {
+  0%   { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.08) translate(-1%, -1%); }
+}
+.cf-ken-burns {
+  animation: cfKenBurns 14s ease-out infinite alternate;
+  will-change: transform;
+}
+
+/* ─── Listing card 3D tilt prep ─── */
+.listing-card {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* ─── Mobile: tắt hover effects + đơn giản hóa ─── */
+@media (hover: none) {
+  .listing-card { transform: none !important; }
+  .cf-ken-burns { animation: none; }
+}
+@media (max-width: 640px) {
+  .lead-popup__card { padding: 24px 20px 18px; border-radius: 16px; }
+  .lead-popup__title { font-size: 18px; }
+}
