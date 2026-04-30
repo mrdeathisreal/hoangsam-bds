@@ -174,6 +174,26 @@ function init() {
   initScrollFadeIn();
   init3DTilt();
   initKenBurns();
+
+  // Failsafe: re-scan cards 3 lần sau khi load (Firebase fetch async, MutationObserver có thể miss)
+  [500, 1500, 3000].forEach(delay => {
+    setTimeout(() => {
+      // Re-trigger fade-in observer
+      document.querySelectorAll('.card:not(.cf-fade-in)').forEach((card, i) => {
+        card.classList.add('cf-fade-in');
+        card.style.transitionDelay = `${(i % 6) * 60}ms`;
+        // If already in viewport, mark visible immediately
+        const rect = card.getBoundingClientRect();
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+          requestAnimationFrame(() => card.classList.add('cf-fade-in--visible'));
+        }
+      });
+      // Re-apply Ken Burns
+      document.querySelectorAll('.card img:not(.cf-ken-burns), .card__media img:not(.cf-ken-burns)').forEach(img => {
+        img.classList.add('cf-ken-burns');
+      });
+    }, delay);
+  });
 }
 
 if (document.readyState === 'loading') {
