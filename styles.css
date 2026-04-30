@@ -3815,15 +3815,25 @@ article.card:hover .card-leaf {
   will-change: transform;
 }
 
-/* ─── Listing card 3D tilt prep ─── */
-.listing-card {
+/* ─── Card 3D tilt prep ─── */
+.card {
   transform-style: preserve-3d;
   will-change: transform;
+}
+/* Đảm bảo Ken Burns zoom không tràn ra ngoài card */
+.card__media {
+  overflow: hidden;
+}
+.card__media img.cf-ken-burns {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* ─── Mobile: tắt hover effects + đơn giản hóa ─── */
 @media (hover: none) {
-  .listing-card { transform: none !important; }
+  .card { transform: none !important; }
   .cf-ken-burns { animation: none; }
 }
 @media (max-width: 640px) {

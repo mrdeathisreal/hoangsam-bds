@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  */
 
-const POPUP_DELAY_MS = 4000;
+const POPUP_DELAY_MS = 7000; // Mềm mại hơn — đợi user xem trang trước
 const POPUP_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
 const POPUP_KEY = 'hs_popup_dismissed_at';
 
@@ -99,7 +99,7 @@ function initScrollFadeIn() {
 
   // Re-observe on DOM changes (for dynamically added listing cards)
   function observeCards() {
-    document.querySelectorAll('.listing-card:not(.cf-fade-in)').forEach((card, i) => {
+    document.querySelectorAll('.card:not(.cf-fade-in)').forEach((card, i) => {
       card.classList.add('cf-fade-in');
       card.style.transitionDelay = `${(i % 6) * 60}ms`;
       observer.observe(card);
@@ -115,7 +115,7 @@ function initScrollFadeIn() {
   }
   // Also watch the whole body in case grid selector misses
   new MutationObserver((mutations) => {
-    if (mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.classList?.contains('listing-card') || n.querySelector?.('.listing-card'))))) {
+    if (mutations.some(m => Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.classList?.contains('listing-card') || n.querySelector?.('.card'))))) {
       observeCards();
     }
   }).observe(document.body, { childList: true, subtree: true });
@@ -125,19 +125,19 @@ function initScrollFadeIn() {
 function init3DTilt() {
   // Use event delegation — works for dynamically added cards
   document.addEventListener('mousemove', (e) => {
-    const card = e.target.closest('.listing-card');
+    const card = e.target.closest('.card');
     if (!card) return;
     const rect = card.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;  // 0..1
     const y = (e.clientY - rect.top) / rect.height;  // 0..1
-    const tiltX = (y - 0.5) * -8; // -4..4 deg
-    const tiltY = (x - 0.5) * 8;
-    card.style.transform = `perspective(900px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.02)`;
+    const tiltX = (y - 0.5) * -4; // ±2 deg — subtle hơn
+    const tiltY = (x - 0.5) * 4;
+    card.style.transform = `perspective(1100px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.01)`;
     card.style.transition = 'transform 0.08s ease-out';
   });
 
   document.addEventListener('mouseleave', (e) => {
-    const card = e.target.closest?.('.listing-card');
+    const card = e.target.closest?.('.card');
     if (!card) return;
     card.style.transform = '';
     card.style.transition = 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)';
@@ -145,7 +145,7 @@ function init3DTilt() {
 
   // Reset on mouseout from card
   document.addEventListener('mouseout', (e) => {
-    const card = e.target.closest?.('.listing-card');
+    const card = e.target.closest?.('.card');
     if (!card) return;
     if (!card.contains(e.relatedTarget)) {
       card.style.transform = '';
@@ -158,7 +158,7 @@ function init3DTilt() {
 function initKenBurns() {
   // Apply class — CSS handles the slow zoom animation
   function applyToImages() {
-    document.querySelectorAll('.listing-card img:not(.cf-ken-burns), .listing-card__media img:not(.cf-ken-burns)').forEach(img => {
+    document.querySelectorAll('.card img:not(.cf-ken-burns), .card__media img:not(.cf-ken-burns)').forEach(img => {
       img.classList.add('cf-ken-burns');
     });
   }
