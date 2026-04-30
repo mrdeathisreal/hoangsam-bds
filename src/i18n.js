@@ -179,6 +179,14 @@ const DICTS = {
     'client.chat':        'Trò chuyện với tư vấn viên',
     'client.book':        'Đặt lịch xem nhà',
 
+    // Lead capture popup
+    'popup.badge':        '✓ Chính chủ · Miễn phí môi giới',
+    'popup.title':        'Cần tư vấn về căn nào?',
+    'popup.desc':         'Marshall Ng — chuyên viên BĐS với 5+ năm kinh nghiệm — sẵn sàng hỗ trợ. Không spam, không gọi điện làm phiền.',
+    'popup.zalo':         'Nhắn Zalo (miễn phí)',
+    'popup.later':        'Tôi tự xem trước',
+    'popup.phone_note':   '· phản hồi trong 15 phút',
+
     'role.toggle_hint':   'Bật: Cộng tác viên · Tắt: Khách hàng',
     'role.client_label':  'Khách',
     'role.ctv_label':     'Cộng tác viên',
@@ -407,6 +415,14 @@ const DICTS = {
     'client.chat':        'Talk to an advisor',
     'client.book':        'Book a viewing',
 
+    // Lead capture popup
+    'popup.badge':        '✓ Direct-owner · No agent fees',
+    'popup.title':        'Need advice on a property?',
+    'popup.desc':         'Marshall Ng — real estate specialist with 5+ years of experience — is ready to help. No spam, no cold calls.',
+    'popup.zalo':         'Message on Zalo (free)',
+    'popup.later':        'Let me browse first',
+    'popup.phone_note':   '· reply within 15 minutes',
+
     'role.toggle_hint':   'On: Partner · Off: Client',
     'role.client_label':  'Guest',
     'role.ctv_label':     'Partner',
@@ -634,6 +650,14 @@ const DICTS = {
     'client.pitch':       'Hoàng Sâm 顧問熟悉所有在架物件、越南房地產法律、過戶流程、銀行貸款與外國人購屋規範。我們以越南語、English 與繁體中文為您服務。點擊下方按鈕取得即時諮詢或預約看房。',
     'client.chat':        '與顧問對話',
     'client.book':        '預約看房',
+
+    // Lead capture popup
+    'popup.badge':        '✓ 屋主直售 · 免仲介費',
+    'popup.title':        '需要關於哪一間的諮詢嗎?',
+    'popup.desc':         'Marshall Ng — 5年以上經驗的房產專家 — 隨時為您服務。不騷擾、不冷打。',
+    'popup.zalo':         '透過 Zalo 私訊(免費)',
+    'popup.later':        '我先自己看看',
+    'popup.phone_note':   '· 15 分鐘內回覆',
 
     'role.toggle_hint':   '開啟:合作夥伴 · 關閉:客戶',
     'role.client_label':  '訪客',
